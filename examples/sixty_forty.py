@@ -1,3 +1,6 @@
+import sys
+sys.path.append('T:\Projects_Code\_My_Work\_Strategy_Analysis\qstrader')
+
 import os
 
 import pandas as pd
@@ -13,8 +16,8 @@ from qstrader.trading.backtest import BacktestTradingSession
 
 
 if __name__ == "__main__":
-    start_dt = pd.Timestamp('2003-09-30 14:30:00', tz=pytz.UTC)
-    end_dt = pd.Timestamp('2019-12-31 23:59:00', tz=pytz.UTC)
+    start_dt = pd.Timestamp('2013-10-01 14:30:00', tz=pytz.UTC)
+    end_dt = pd.Timestamp('2021-09-30 23:59:00', tz=pytz.UTC)
 
     # Construct the symbols and assets necessary for the backtest
     strategy_symbols = ['SPY', 'AGG']
@@ -70,3 +73,4 @@ if __name__ == "__main__":
         title='60/40 US Equities/Bonds'
     )
     tearsheet.plot_results()
+    print ('stop')

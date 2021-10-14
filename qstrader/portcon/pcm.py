@@ -273,6 +273,7 @@ class PortfolioConstructionModel(object):
         # they are not specifically referenced on the optimised weights
         full_assets = self._obtain_full_asset_list(dt)
         full_zero_weights = self._create_zero_target_weight_vector(full_assets)
+        
         full_weights = self._create_full_asset_weight_vector(
             full_zero_weights, optimised_weights
         )

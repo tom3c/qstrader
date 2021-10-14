@@ -1,3 +1,6 @@
+import sys
+sys.path.append('T:\Projects_Code\_My_Work\_Strategy_Analysis\qstrader')
+
 from unittest.mock import Mock
 
 import pandas as pd

@@ -5,7 +5,7 @@ class PortfolioOptimiser(object):
     """
     Abstract interface for a PortfolioOptimiser callable.
 
-    A derived-class instance of PortfolioOptimisertakes in
+    A derived-class instance of PortfolioOptimiser takes in
     a list of Assets (not an Asset Universe) and an optional
     DataHandler instance in order to generate target weights
     for Assets.

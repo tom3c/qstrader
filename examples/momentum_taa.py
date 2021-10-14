@@ -1,3 +1,6 @@
+import sys
+sys.path.append('T:\Projects_Code\_My_Work\_Strategy_Analysis\qstrader')
+
 import operator
 import os
 
@@ -229,3 +232,5 @@ if __name__ == "__main__":
         title='US Sector Momentum - Top 3 Sectors'
     )
     tearsheet.plot_results()
+
+    print ('stop')

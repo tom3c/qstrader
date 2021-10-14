@@ -308,6 +308,7 @@ class SimulatedBroker(Broker):
             equity_dict[portfolio.portfolio_id] = port_equity
             master_equity += port_equity
         equity_dict["master"] = master_equity
+
         return equity_dict
 
     def create_portfolio(self, portfolio_id, name=None):
