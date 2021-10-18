@@ -12,7 +12,7 @@ from qstrader.asset.universe.static import StaticUniverse
 from qstrader.data.backtest_data_handler import BacktestDataHandler
 from qstrader.data.daily_bar_csv import CSVDailyBarDataSource
 from qstrader.statistics.tearsheet import TearsheetStatistics
-from qstrader.trading.backtest import BacktestTradingSession
+from qstrader.trading._tc_multi_port_backtest import BacktestTradingSessionMultiCurrency
 
 
 if __name__ == "__main__":
@@ -20,7 +20,7 @@ if __name__ == "__main__":
     end_dt = pd.Timestamp('2018-09-30 23:59:00', tz=pytz.UTC)
 
     # Construct the symbols and assets necessary for the backtest
-    strategy_symbols = ['SPY', 'AGG']
+    strategy_symbols = ['SPY', 'MSE']
     strategy_assets = ['EQ:%s' % symbol for symbol in strategy_symbols]
     strategy_universe = StaticUniverse(strategy_assets)
 
@@ -34,8 +34,8 @@ if __name__ == "__main__":
     # static allocations to a universe of assets
     # In this case 60% SPY ETF, 40% AGG ETF,
     # rebalanced at the end of each month
-    strategy_alpha_model = FixedSignalsAlphaModel({'EQ:SPY': 0.6, 'EQ:AGG': 0.4})
-    strategy_backtest = BacktestTradingSession(
+    strategy_alpha_model = FixedSignalsAlphaModel({'EQ:SPY': 0.5, 'EQ:MSE': 0.5})
+    strategy_backtest = BacktestTradingSessionMultiCurrency(
         start_dt,
         end_dt,
         strategy_universe,

@@ -7,3 +7,4 @@ class Asset(object):
     """
 
     __metaclass__ = ABCMeta
+
