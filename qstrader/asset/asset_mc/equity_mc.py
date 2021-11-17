@@ -1,8 +1,8 @@
 ####TC####
 
-from qstrader.asset.asset_cur import Asset_Cur
+from qstrader.asset.asset_mc.asset_mc import Asset_MC
 
-class Equity_Cur(Asset_Cur):
+class Equity_MC(Asset_MC):
 
     def __init__(
         self,

@@ -3,7 +3,7 @@
 from abc import ABCMeta, abstractmethod
 
 
-class Universe_Multi_Currency(object):
+class Universe_MC(object):
     """
     Interface specification for an Asset Universe.
     """

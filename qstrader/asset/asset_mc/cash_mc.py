@@ -1,9 +1,8 @@
 ##TC##
 
-from qstrader.asset.asset_cur import Asset_Cur
+from qstrader.asset.asset_mc.asset_mc import Asset_MC
 
-
-class Cash_Cur(Asset_Cur):
+class Cash_MC(Asset_MC):
 
     def __init__(self, currency='USD'):
         self.cash_like = True

@@ -5,10 +5,10 @@ import pandas as pd
 import pytz
 import pytest
 
-from qstrader.broker.portfolio.portfolio_multi_currency import Portfolio_Multi_Currency
-from qstrader.broker.portfolio.portfolio_event import PortfolioEvent
+from qstrader.broker.portfolio_mc.portfolio_mc import Portfolio_MC
+from qstrader.broker.portfolio_mc.portfolio_event_mc import PortfolioEvent_MC
 #from qstrader.broker.transaction.transaction import Transaction
-from qstrader.broker.transaction.transaction_cur import Transaction_Cur
+from qstrader.broker.transaction.transaction_mc import Transaction_MC
 
 
 def test_initial_settings_for_default_multi_currency_portfolio():
@@ -19,7 +19,7 @@ def test_initial_settings_for_default_multi_currency_portfolio():
     start_dt = pd.Timestamp('2017-10-05 08:00:00', tz=pytz.UTC)
 
     # Test a default Portfolio
-    port1 = Portfolio_Multi_Currency(start_dt)
+    port1 = Portfolio_MC(start_dt)
     assert port1.start_dt == start_dt
     assert port1.current_dt == start_dt
     assert port1.base_currency == "USD"
@@ -31,7 +31,7 @@ def test_initial_settings_for_default_multi_currency_portfolio():
     assert port1.total_equity == 0.0
 
     # Test a Portfolio with keyword arguments
-    port2 = Portfolio_Multi_Currency(
+    port2 = Portfolio_MC(
         start_dt, starting_cash=1234567.56, base_currency="USD",
         portfolio_id=12345, name="My Second Test Portfolio"
     )
@@ -56,12 +56,12 @@ def test_multi_currency_portfolio_currency_settings():
 
     # Test a US portfolio produces correct values
     cur1 = "USD"
-    port1 = Portfolio_Multi_Currency(start_dt, base_currency=cur1)
+    port1 = Portfolio_MC(start_dt, base_currency=cur1)
     assert port1.base_currency == "USD"
 
     # Test a UK portfolio produces correct values
     cur2 = "GBP"
-    port2 = Portfolio_Multi_Currency(start_dt, base_currency=cur2)
+    port2 = Portfolio_MC(start_dt, base_currency=cur2)
     assert port2.base_currency == "GBP"
 
 
@@ -77,7 +77,7 @@ def test_multi_currency_subscribe_funds_behaviour():
     later_dt = pd.Timestamp('2017-10-06 08:00:00', tz=pytz.UTC)
     pos_cash = 1000.0
     neg_cash = -1000.0
-    port = Portfolio_Multi_Currency(start_dt, starting_cash=2000.0)
+    port = Portfolio_MC(start_dt, starting_cash=2000.0)
 
     # Test subscribe_funds raises for incorrect datetime
     with pytest.raises(ValueError):
@@ -95,12 +95,12 @@ def test_multi_currency_subscribe_funds_behaviour():
     assert port.total_market_value == 0.0
     assert port.total_equity == 3000.0
 
-    pe1 = PortfolioEvent(
+    pe1 = PortfolioEvent_MC(
         dt=start_dt, type='subscription',
         description="SUBSCRIPTION", debit=0.0,
         credit=2000.0, balance=2000.0
     )
-    pe2 = PortfolioEvent(
+    pe2 = PortfolioEvent_MC(
         dt=later_dt, type='subscription',
         description="SUBSCRIPTION", debit=0.0,
         credit=1000.0, balance=3000.0
@@ -125,7 +125,7 @@ def test_multi_currency_subscribe_funds_behaviour_two_currencies():
     pos_cash_hkd = 10000.0
     neg_cash_hkd = -10000.0
 
-    port = Portfolio_Multi_Currency(start_dt, starting_cash=2000.0)
+    port = Portfolio_MC(start_dt, starting_cash=2000.0)
 
     # Test subscribe_funds raises for incorrect datetime
     with pytest.raises(ValueError):
@@ -153,18 +153,18 @@ def test_multi_currency_subscribe_funds_behaviour_two_currencies():
     assert port.total_market_value == 0.0
     assert port.total_equity == 13000.0
 
-    pe1 = PortfolioEvent(
+    pe1 = PortfolioEvent_MC(
         dt=start_dt, type='subscription',
         description="SUBSCRIPTION", debit=0.0,
         credit=2000.0, balance=2000.0
     )
-    pe2 = PortfolioEvent(
+    pe2 = PortfolioEvent_MC(
         dt=later_dt, type='subscription',
         description="SUBSCRIPTION", debit=0.0,
         credit=1000.0, balance=3000.0
     )
     #####TC TO DO - records balance for added currency
-    pe3 = PortfolioEvent(
+    pe3 = PortfolioEvent_MC(
         dt=later_dt, type='subscription',
         description="SUBSCRIPTION", debit=0.0,
         credit=10000.0, balance=10000.0
@@ -188,7 +188,7 @@ def test_withdraw_funds_behaviour():
     even_later_dt = pd.Timestamp('2017-10-07 08:00:00', tz=pytz.UTC)
     pos_cash = 1000.0
     neg_cash = -1000.0
-    port_raise = Portfolio_Multi_Currency(start_dt)
+    port_raise = Portfolio_MC(start_dt)
 
     # Test withdraw_funds raises for incorrect datetime
     with pytest.raises(ValueError):
@@ -199,7 +199,7 @@ def test_withdraw_funds_behaviour():
         port_raise.withdraw_funds(start_dt, neg_cash)
 
     # Test withdraw_funds raises for not enough cash
-    port_broke = Portfolio_Multi_Currency(start_dt)
+    port_broke = Portfolio_MC(start_dt)
     port_broke.subscribe_funds(later_dt, 1000.0)
 
     with pytest.raises(ValueError):
@@ -208,9 +208,9 @@ def test_withdraw_funds_behaviour():
     # Test withdraw_funds correctly subtracts positive
     # amount, generates correct event and modifies time
     # Initial subscribe
-    port_cor = Portfolio_Multi_Currency(start_dt)
+    port_cor = Portfolio_MC(start_dt)
     port_cor.subscribe_funds(later_dt, pos_cash)
-    pe_sub = PortfolioEvent(
+    pe_sub = PortfolioEvent_MC(
         dt=later_dt, type='subscription',
         description="SUBSCRIPTION", debit=0.0,
         credit=1000.0, balance=1000.0
@@ -223,7 +223,7 @@ def test_withdraw_funds_behaviour():
 
     # Now withdraw
     port_cor.withdraw_funds(even_later_dt, 468.0)
-    pe_wdr = PortfolioEvent(
+    pe_wdr = PortfolioEvent_MC(
         dt=even_later_dt, type='withdrawal',
         description="WITHDRAWAL", debit=468.0,
         credit=0.0, balance=532.0
@@ -246,11 +246,11 @@ def test_transact_asset_behaviour():
     earlier_dt = pd.Timestamp('2017-10-04 08:00:00', tz=pytz.UTC)
     later_dt = pd.Timestamp('2017-10-06 08:00:00', tz=pytz.UTC)
     even_later_dt = pd.Timestamp('2017-10-07 08:00:00', tz=pytz.UTC)
-    port = Portfolio_Multi_Currency(start_dt)
+    port = Portfolio_MC(start_dt)
     asset = 'EQ:AAA'
 
     # Test transact_asset raises for incorrect time
-    tn_early = Transaction_Cur(
+    tn_early = Transaction_MC(
         asset=asset,
         quantity=100,
         dt=earlier_dt,
@@ -269,7 +269,7 @@ def test_transact_asset_behaviour():
     assert port.total_market_value == 0.0
     assert port.total_equity == 1000.0
 
-    pe_sub1 = PortfolioEvent(
+    pe_sub1 = PortfolioEvent_MC(
         dt=later_dt, type='subscription',
         description="SUBSCRIPTION", debit=0.0,
         credit=1000.0, balance=1000.0
@@ -284,12 +284,12 @@ def test_transact_asset_behaviour():
     assert port.total_market_value == 0.0
     assert port.total_equity == 100000.0
 
-    pe_sub2 = PortfolioEvent(
+    pe_sub2 = PortfolioEvent_MC(
         dt=even_later_dt, type='subscription',
         description="SUBSCRIPTION", debit=0.0,
         credit=99000.0, balance=100000.0
     )
-    tn_even_later = Transaction_Cur(
+    tn_even_later = Transaction_MC(
         asset=asset,
         quantity=100,
         dt=even_later_dt,
@@ -304,7 +304,7 @@ def test_transact_asset_behaviour():
     assert port.total_equity == 99984.22
 
     description = "LONG 100 EQ:AAA 567.00 07/10/2017"
-    pe_tn = PortfolioEvent(
+    pe_tn = PortfolioEvent_MC(
         dt=even_later_dt, type="asset_transaction",
         description=description, debit=56715.78,
         credit=0.0, balance=43284.22
@@ -319,7 +319,7 @@ def test_transact_asset_behaviour_two_different_currency_assets():
 
     start_dt = pd.Timestamp('2017-10-05 08:00:00', tz=pytz.UTC)
     later_dt = pd.Timestamp('2017-10-06 08:00:00', tz=pytz.UTC)
-    port = Portfolio_Multi_Currency(start_dt)
+    port = Portfolio_MC(start_dt)
     asset_1 = 'EQ:AAA'
     asset_2 = 'EQ:MSE'
 
@@ -329,7 +329,7 @@ def test_transact_asset_behaviour_two_different_currency_assets():
     assert port.total_market_value == 0.0
     assert port.total_equity == 100000.0
 
-    pe_Usd = PortfolioEvent(
+    pe_Usd = PortfolioEvent_MC(
         dt=start_dt, type='subscription',
         description="SUBSCRIPTION", debit=0.0,
         credit=100000.0, balance=100000.0
@@ -341,14 +341,14 @@ def test_transact_asset_behaviour_two_different_currency_assets():
     assert port.total_market_value == 0.0
     assert port.total_equity == 175000.0
 
-    pe_Eur = PortfolioEvent(
+    pe_Eur = PortfolioEvent_MC(
         dt=start_dt, type='subscription',
         description="SUBSCRIPTION", debit=0.0,
         credit=75000.0, balance=75000.0
     )
 
     # Test transact_asset raises for incorrect time
-    tn_usd = Transaction_Cur(
+    tn_usd = Transaction_MC(
         asset=asset_1,
         quantity=100,
         dt=later_dt,
@@ -365,13 +365,13 @@ def test_transact_asset_behaviour_two_different_currency_assets():
     assert port.total_equity == 174984.22
 
     description = "LONG 100 EQ:AAA 567.00 06/10/2017"
-    pe_tn_Usd = PortfolioEvent(
+    pe_tn_Usd = PortfolioEvent_MC(
         dt=later_dt, type="asset_transaction",
         description=description, debit=56715.78,
         credit=0.0, balance=43284.22
     )
 
-    tn_eur = Transaction_Cur(
+    tn_eur = Transaction_MC(
         asset=asset_2,
         quantity=50,
         dt=later_dt,
@@ -387,7 +387,7 @@ def test_transact_asset_behaviour_two_different_currency_assets():
     assert port.total_equity == 174976.58000000002      ####Some floating point accruracy worth looking at#####
 
     description = "LONG 50 EQ:MSE 462.30 06/10/2017"
-    pe_tn_Eur = PortfolioEvent(
+    pe_tn_Eur = PortfolioEvent_MC(
         dt=later_dt, type="asset_transaction",
         description=description, debit=23122.64,
         credit=0.0, balance=51877.36
@@ -407,7 +407,7 @@ def test_portfolio_to_dict_empty_portfolio():
     Test 'portfolio_to_dict' method for an empty Portfolio.
     """
     start_dt = pd.Timestamp('2017-10-05 08:00:00', tz=pytz.UTC)
-    port = Portfolio_Multi_Currency(start_dt)
+    port = Portfolio_MC(start_dt)
     port.subscribe_funds(start_dt, 100000.0)
     port_dict = port.portfolio_to_dict()
     assert port_dict == {}
@@ -424,15 +424,15 @@ def test_portfolio_to_dict_for_two_holdings():
     asset1 = 'EQ:AAA'
     asset2 = 'EQ:BBB'
 
-    port = Portfolio_Multi_Currency(start_dt, portfolio_id='1234')
+    port = Portfolio_MC(start_dt, portfolio_id='1234')
     port.subscribe_funds(start_dt, 100000.0)
-    tn_asset1 = Transaction_Cur(
+    tn_asset1 = Transaction_MC(
         asset=asset1, quantity=100, dt=asset1_dt,
         price=567.0, order_id=1, commission=15.78
     )
     port.transact_asset(tn_asset1)
 
-    tn_asset2 = Transaction_Cur(
+    tn_asset2 = Transaction_MC(
         asset=asset2, quantity=100, dt=asset2_dt,
         price=123.0, order_id=2, commission=7.64
     )
@@ -472,7 +472,7 @@ def test_update_market_value_of_asset_not_in_list():
     """
     start_dt = pd.Timestamp('2017-10-05 08:00:00', tz=pytz.UTC)
     later_dt = pd.Timestamp('2017-10-06 08:00:00', tz=pytz.UTC)
-    port = Portfolio_Multi_Currency(start_dt)
+    port = Portfolio_MC(start_dt)
     asset = 'EQ:AAA'
     update = port.update_market_value_of_asset(
         asset, 54.34, later_dt
@@ -487,11 +487,11 @@ def test_update_market_value_of_asset_negative_price():
     """
     start_dt = pd.Timestamp('2017-10-05 08:00:00', tz=pytz.UTC)
     later_dt = pd.Timestamp('2017-10-06 08:00:00', tz=pytz.UTC)
-    port = Portfolio_Multi_Currency(start_dt)
+    port = Portfolio_MC(start_dt)
 
     asset = 'EQ:AAA'
     port.subscribe_funds(later_dt, 100000.0)
-    tn_asset = Transaction_Cur(
+    tn_asset = Transaction_MC(
         asset=asset,
         quantity=100,
         dt=later_dt,
@@ -514,11 +514,11 @@ def test_update_market_value_of_asset_earlier_date():
     start_dt = pd.Timestamp('2017-10-05 08:00:00', tz=pytz.UTC)
     earlier_dt = pd.Timestamp('2017-10-04 08:00:00', tz=pytz.UTC)
     later_dt = pd.Timestamp('2017-10-06 08:00:00', tz=pytz.UTC)
-    port = Portfolio_Multi_Currency(start_dt, portfolio_id='1234')
+    port = Portfolio_MC(start_dt, portfolio_id='1234')
 
     asset = 'EQ:AAA'
     port.subscribe_funds(later_dt, 100000.0)
-    tn_asset = Transaction_Cur(
+    tn_asset = Transaction_MC(
         asset=asset,
         quantity=100,
         dt=later_dt,
@@ -538,7 +538,7 @@ def test_history_to_df_empty():
     Test 'history_to_df' with no events.
     """
     start_dt = pd.Timestamp('2017-10-05 08:00:00', tz=pytz.UTC)
-    port = Portfolio_Multi_Currency(start_dt)
+    port = Portfolio_MC(start_dt)
     hist_df = port.history_to_df()
     test_df = pd.DataFrame(
         [], columns=[

@@ -2,7 +2,7 @@
 
 from abc import ABCMeta, abstractmethod
 
-class Asset_Cur(object):
+class Asset_MC(object):
     """
     Generic asset class that stores meta data about a trading asset.
     """

@@ -2,7 +2,6 @@ import sys
 sys.path.append('T:\Projects_Code\_My_Work\_Strategy_Analysis\qstrader')
 
 import os
-
 import pandas as pd
 import pytz
 

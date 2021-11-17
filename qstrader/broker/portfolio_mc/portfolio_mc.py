@@ -6,13 +6,17 @@ import logging
 import pandas as pd
 
 from qstrader import settings
-from qstrader.broker.portfolio.portfolio_event import PortfolioEvent
-from qstrader.broker.portfolio.position_handler import PositionHandler
-from qstrader.broker.portfolio.position_cash_handler import PositionCashHandler
-from qstrader.broker.transaction.transaction import Transaction
+from qstrader.broker.portfolio_mc.portfolio_event_mc import PortfolioEvent_MC
+from qstrader.broker.portfolio_mc.position_handler_mc import PositionHandler_MC
+from qstrader.broker.portfolio_mc.position_handler_cash_mc import PositionCashHandler_MC
+#from qstrader.broker.transaction.transaction_cash import Transaction_Cash
 
+##TC - Need to be able to create cash transactions here for subscriptions and withdrawals
+# Otherwise most transactions take place at broker level
 
-class Portfolio_Multi_Currency(object):
+## Currency all price of cash transactions is 1.  Is that correct?
+
+class Portfolio_MC(object):
 
     def __init__(
         self,
@@ -29,8 +33,8 @@ class Portfolio_Multi_Currency(object):
         self.portfolio_id = portfolio_id
         self.name = name
 
-        self.pos_handler = PositionHandler()
-        self.pos_cash_handler = PositionCashHandler()
+        self.pos_handler = PositionHandler_MC()
+        self.pos_cash_handler = PositionCashHandler_MC()
         self.history = []
 
         self.logger = logging.getLogger('Portfolio')
@@ -46,16 +50,17 @@ class Portfolio_Multi_Currency(object):
 
     def _initialise_portfolio_with_cash(self):
         
-        # Create a transaction for starting cash and update the portfolio
-        txn = Transaction(
+        ##TC -Create a transaction for starting cash and update the portfolio
+        # Applies in base currency so fx_rate is 1
+        txnc = Transaction_Cash(
             self.base_currency, self.starting_cash, self.current_dt,
             1.0, uuid.uuid4().hex, commission=0.0
         )
-        self.pos_cash_handler.transact_cash_position(txn)
+        self.pos_cash_handler.transact_cash_position(txnc)
 
         if self.starting_cash > 0.0:
             self.history.append(
-                PortfolioEvent.create_subscription(
+                PortfolioEvent_MC.create_subscription(
                     self.current_dt, self.starting_cash, self.starting_cash
                 )
             )
@@ -82,7 +87,7 @@ class Portfolio_Multi_Currency(object):
 
     @property
     def total_equity(self):
-        return self.total_market_value + + self.pos_cash_handler.total_cash_market_value()
+        return self.total_market_value + self.pos_cash_handler.total_cash_market_value()
 
     @property
     def total_unrealised_pnl(self):
@@ -96,7 +101,10 @@ class Portfolio_Multi_Currency(object):
     def total_pnl(self):
         return self.pos_handler.total_pnl() + self.pos_cash_handler.total_cash_pnl()
 
-    def subscribe_funds(self, dt, amount, currency=None):
+
+    ##TC When subscribing funds needs to include currency.  If no currency then base used.
+    ##if currency included in to specify fx rate otherwise error
+    def subscribe_funds(self, dt, amount, currency=None, fx_rate=None):
         
         if dt < self.current_dt:
             raise ValueError(
@@ -113,17 +121,22 @@ class Portfolio_Multi_Currency(object):
 
         if currency is None:
             currency = self.base_currency
+            if fx_rate is not None:
+                raise ValueError(
+                    'Cannot credit non base curreny with non unit fx rate: '
+                    '%s.' % fx_rate
+                )    
 
-        # Create a transaction for subscription cash and update the portfolio
-        txn = Transaction(
+        ##TC Create a transaction for subscription cash and update the portfolio
+        txnc = Transaction_Cash(
             currency, amount, dt,
             1.0, uuid.uuid4().hex, commission=0.0
         )
-        self.pos_cash_handler.transact_cash_position(txn)
+        self.pos_cash_handler.transact_cash_position(txnc)
 
         currency_bal = self.portfolio_cash_to_dict()[currency]['quantity']
         self.history.append(
-            PortfolioEvent.create_subscription(self.current_dt, amount,currency_bal)  
+            PortfolioEvent_MC.create_subscription(self.current_dt, amount,currency_bal)  
         )
         self.logger.info(
             '(%s) Funds subscribed to portfolio "%s" '
@@ -168,15 +181,15 @@ class Portfolio_Multi_Currency(object):
             )
 
         # Create a transaction for withdrawal cash and update the portfolio
-        txn = Transaction(
+        txnc = Transaction_Cash(
             currency, -amount, dt,
             1.0, uuid.uuid4().hex, commission=0.0
         )
-        self.pos_cash_handler.transact_cash_position(txn)
+        self.pos_cash_handler.transact_cash_position(txnc)
 
         currency_bal = self.portfolio_cash_to_dict()[currency]['quantity']
         self.history.append(
-            PortfolioEvent.create_withdrawal(self.current_dt, amount, currency_bal)
+            PortfolioEvent_MC.create_withdrawal(self.current_dt, amount, currency_bal)
         )
         self.logger.info(
             '(%s) Funds withdrawn from portfolio "%s" '
@@ -216,7 +229,7 @@ class Portfolio_Multi_Currency(object):
 
         self.pos_handler.transact_position(txn)
 
-        # Create a transaction for cash and update the portfolio
+        ##TC Create a transaction for cash and update the portfolio
         txn_cash = Transaction(txn.currency, -txn_total_cost, txn.dt, 1.0, txn.order_id * uuid.uuid4().hex, commission=0.0)
         self.pos_cash_handler.transact_cash_position(txn_cash)
 
@@ -231,7 +244,7 @@ class Portfolio_Multi_Currency(object):
         currency_bal = self.portfolio_cash_to_dict()[txn.currency]['quantity']
 
         if direction == "LONG":
-            pe = PortfolioEvent(
+            pe = PortfolioEvent_MC(
                 dt=txn.dt, type='asset_transaction',
                 description=description,
                 debit=round(txn_total_cost, 2), credit=0.0,
@@ -246,7 +259,7 @@ class Portfolio_Multi_Currency(object):
                 )
             )
         else:
-            pe = PortfolioEvent(
+            pe = PortfolioEvent_MC(
                 dt=txn.dt, type='asset_transaction',
                 description=description,
                 debit=0.0, credit=-1.0 * round(txn_total_cost, 2),
@@ -263,7 +276,6 @@ class Portfolio_Multi_Currency(object):
         self.history.append(pe)
 
 
-
     def portfolio_to_dict(self):
         holdings = {}
         for asset, pos in self.pos_handler.positions.items():
@@ -276,6 +288,8 @@ class Portfolio_Multi_Currency(object):
             }
         return holdings
 
+
+    ##TC - Returns cash positions as dict
     def portfolio_cash_to_dict(self):
         holdings = {}
         for asset, pos in self.pos_cash_handler.positions.items():
@@ -287,6 +301,40 @@ class Portfolio_Multi_Currency(object):
                 "total_pnl": pos.total_pnl
             }
         return holdings
+
+    ##TC - Returns positions of call asset
+    def get_position(self, asset):
+        all_pos = {**self.portfolio_to_dict, **self.portfolio_cash_to_dict}
+
+        if asset in all_pos:
+            all_pos[asset]['quantity']
+        else:
+            return 0.0
+
+    ##TC - This needs to be added to pull currency exposure
+    # def portfolio_currency_exp_to_dict(self):
+    #     exposure = {}
+
+
+    #     for asset, pos in self.pos_cash_handler.positions.items():
+    #         holdings[asset] = {
+    #             "quantity": pos.net_quantity,
+    #             "market_value": pos.market_value,
+    #             "unrealised_pnl": pos.unrealised_pnl,
+    #             "realised_pnl": pos.realised_pnl,
+    #             "total_pnl": pos.total_pnl
+    #         }
+    #     for asset, pos in self.pos_cash_handler.positions.items():
+    #         holdings[asset] = {
+    #             "quantity": pos.net_quantity,
+    #             "market_value": pos.market_value,
+    #             "unrealised_pnl": pos.unrealised_pnl,
+    #             "realised_pnl": pos.realised_pnl,
+    #             "total_pnl": pos.total_pnl
+    #         }
+ 
+    #     return holdings
+
 
     def update_market_value_of_asset(
         self, asset, current_price, current_dt

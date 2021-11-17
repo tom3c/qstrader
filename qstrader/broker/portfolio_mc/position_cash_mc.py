@@ -3,7 +3,7 @@ from math import floor
 import numpy as np
 
 
-class PositionCash(object):
+class PositionCash_MC(object):
 
     def __init__(
         self,

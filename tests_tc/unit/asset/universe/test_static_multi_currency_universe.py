@@ -7,7 +7,8 @@ import pandas as pd
 import pytest
 import pytz
 
-from qstrader.asset.universe.static_multi_currency import StaticMultiCurrencyUniverse
+from qstrader.asset.universe_mc.static_mc import StaticUniverse_MC
+from qstrader.asset.asset_mc.equity_mc import Equity_MC
 
 
 @pytest.mark.parametrize(
@@ -32,7 +33,7 @@ def test_static_multi_currency_universe(assets, dt, expected_equity,expected_cas
     Checks that the StaticUniverse correctly returns the
     list of assets for a particular datetime.
     """
-    universe = StaticMultiCurrencyUniverse(assets)
+    universe = StaticUniverse_MC(assets)
     assert universe.get_equity_assets(dt) == expected_equity
     assert universe.get_cash_assets(dt) == expected_cash
 
@@ -61,9 +62,10 @@ def test_static_multi_currency_universe_with_cash(equity_assets, cash_assets, dt
     Checks that the StaticUniverse correctly returns the
     list of assets for a particular datetime.
     """
-    universe = StaticMultiCurrencyUniverse(equity_assets, cash_assets)
+    universe = StaticUniverse_MC(equity_assets, cash_assets)
     assert universe.get_equity_assets(dt) == expected_equity
     assert universe.get_cash_assets(dt) == expected_cash
+
 
 
 @pytest.mark.parametrize(
@@ -80,7 +82,7 @@ def test_static_multi_currency_universe_currencies(assets, dt):
     Checks that the StaticUniverse correctly returns the
     list of assets for a particular datetime.
     """
-    universe = StaticMultiCurrencyUniverse(assets)
+    universe = StaticUniverse_MC(assets)
     assert universe.get_equity_asset_currency('EQ:GLD') == 'USD'
     assert universe.get_equity_asset_currency('EQ:MSE') == 'EUR'
     assert universe.get_equity_asset_currency('EQ:TLT') == 'USD'
