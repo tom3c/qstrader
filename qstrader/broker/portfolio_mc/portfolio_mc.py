@@ -9,7 +9,8 @@ from qstrader import settings
 from qstrader.broker.portfolio_mc.portfolio_event_mc import PortfolioEvent_MC
 from qstrader.broker.portfolio_mc.position_handler_mc import PositionHandler_MC
 from qstrader.broker.portfolio_mc.position_handler_cash_mc import PositionCashHandler_MC
-#from qstrader.broker.transaction.transaction_cash import Transaction_Cash
+from qstrader.broker.transaction.transaction_leg_cash import Transaction_Leg_Cash
+from qstrader.broker.transaction.transaction_leg_stock import Transaction_Leg_Stock
 
 ##TC - Need to be able to create cash transactions here for subscriptions and withdrawals
 # Otherwise most transactions take place at broker level
@@ -52,22 +53,23 @@ class Portfolio_MC(object):
         
         ##TC -Create a transaction for starting cash and update the portfolio
         # Applies in base currency so fx_rate is 1
-        txnc = Transaction_Cash(
+
+        txn_one = Transaction_Leg_Cash(
             self.base_currency, self.starting_cash, self.current_dt,
             1.0, uuid.uuid4().hex, commission=0.0
         )
-        self.pos_cash_handler.transact_cash_position(txnc)
+        self.pos_cash_handler.transact_cash_position(txn_one)
 
         if self.starting_cash > 0.0:
             self.history.append(
                 PortfolioEvent_MC.create_subscription(
-                    self.current_dt, self.starting_cash, self.starting_cash
+                    self.current_dt, self.base_currency, self.starting_cash, self.starting_cash
                 )
             )
 
         self.logger.info(
             '(%s) Inital funds subscribed to portfolio "%s" '
-            ' Currency - %s'
+            'Base Currency - %s'
             '- Credit: %0.2f, Balance: %0.2f' % (
                 self.current_dt.strftime(settings.LOGGING["DATE_FORMAT"]),
                 self.portfolio_id,
@@ -102,9 +104,8 @@ class Portfolio_MC(object):
         return self.pos_handler.total_pnl() + self.pos_cash_handler.total_cash_pnl()
 
 
-    ##TC When subscribing funds needs to include currency.  If no currency then base used.
-    ##if currency included in to specify fx rate otherwise error
-    def subscribe_funds(self, dt, amount, currency=None, fx_rate=None):
+    ##TC When subscribing funds done in base currency only.  Fx transactions changes if needs be
+    def subscribe_funds(self, dt, amount):
         
         if dt < self.current_dt:
             raise ValueError(
@@ -119,38 +120,31 @@ class Portfolio_MC(object):
                 '%s to the portfolio.' % amount
             )
 
-        if currency is None:
-            currency = self.base_currency
-            if fx_rate is not None:
-                raise ValueError(
-                    'Cannot credit non base curreny with non unit fx rate: '
-                    '%s.' % fx_rate
-                )    
-
         ##TC Create a transaction for subscription cash and update the portfolio
-        txnc = Transaction_Cash(
-            currency, amount, dt,
+        txn_subscription = Transaction_Leg_Cash(
+            self.base_currency, amount, dt,
             1.0, uuid.uuid4().hex, commission=0.0
         )
-        self.pos_cash_handler.transact_cash_position(txnc)
 
-        currency_bal = self.portfolio_cash_to_dict()[currency]['quantity']
+        self.pos_cash_handler.transact_cash_position(txn_subscription)
+
+        currency_bal = self.portfolio_cash_to_dict()[self.base_currency]['quantity']
         self.history.append(
             PortfolioEvent_MC.create_subscription(self.current_dt, amount,currency_bal)  
         )
         self.logger.info(
             '(%s) Funds subscribed to portfolio "%s" '
-            ' Currency - %s '
+            'Base Currency - %s '
             '- Credit: %0.2f, Balance: %0.2f' % (
                 self.current_dt.strftime(settings.LOGGING["DATE_FORMAT"]),
                 self.portfolio_id,
-                currency,
+                self.base_currency,
                 round(amount, 2),
                 round(currency_bal, 2)
             )
         )
 
-    def withdraw_funds(self, dt, amount, currency=None):
+    def withdraw_funds(self, dt, amount):
         # Check that amount is positive and that there is
         # enough in the portfolio to withdraw the funds
         if dt < self.current_dt:
@@ -167,10 +161,7 @@ class Portfolio_MC(object):
                 '%0.2f from the portfolio.' % amount
             )
 
-        if currency is None:
-            currency = self.base_currency
-
-        currency_bal = self.portfolio_cash_to_dict()[currency]['quantity']
+        currency_bal = self.portfolio_cash_to_dict()[self.base_currency]['quantity']
         if amount > currency_bal:
             raise ValueError(
                 'Not enough cash in the portfolio to '
@@ -180,29 +171,29 @@ class Portfolio_MC(object):
                 )
             )
 
-        # Create a transaction for withdrawal cash and update the portfolio
-        txnc = Transaction_Cash(
-            currency, -amount, dt,
+        #TC Create a transaction for withdrawal cash and update the portfolio
+        txn_withdraw = Transaction_Leg_Cash(
+            self.base_currency, amount, dt,
             1.0, uuid.uuid4().hex, commission=0.0
         )
-        self.pos_cash_handler.transact_cash_position(txnc)
 
-        currency_bal = self.portfolio_cash_to_dict()[currency]['quantity']
+        self.pos_cash_handler.transact_cash_position(txn_withdraw)
+
+        currency_bal = self.portfolio_cash_to_dict()[self.base_currency]['quantity']
         self.history.append(
             PortfolioEvent_MC.create_withdrawal(self.current_dt, amount, currency_bal)
         )
         self.logger.info(
             '(%s) Funds withdrawn from portfolio "%s" '
-            ' Currency - %s '
+            'Base Currency - %s '
             '- Debit: %0.2f, Balance: %0.2f' % (
                 self.current_dt.strftime(settings.LOGGING["DATE_FORMAT"]),
                 self.portfolio_id, 
-                currency,
+                self.base_currency,
                 round(amount, 2),
                 round(currency_bal, 2)
             )
         )
-
 
     def transact_asset(self, txn):
         if txn.dt < self.current_dt:
@@ -213,64 +204,67 @@ class Portfolio_MC(object):
             )
         self.current_dt = txn.dt
 
-        txn_share_cost = txn.price * txn.quantity
-        txn_total_cost = txn_share_cost + txn.commission
+        if txn.type is 'FX_TRANSACTION':
+            
+            #split commissions 50/50 across each position
+            coms = txn.commission / 2.0
+            txn_leg_curncy_one = Transaction_Leg_Cash(txn.asset,txn.quantity, txn.dt, txn.price, txn.order_id + '_curncy_1',coms)     
+            qty_curncy_two = round((txn.price * txn.quantity) / txn.fx_rate)
+            txn_leg_curncy_two = Transaction_Leg_Cash(txn.currency,qty_curncy_two, txn.dt, txn.fx_rate, txn.order_id + '_curncy_2',coms) 
+            self.pos_cash_handler.transact_cash_position(txn_leg_curncy_one)
+            self.pos_cash_handler.transact_cash_position(txn_leg_curncy_two)
+            txn_total_cost = qty_curncy_two + txn.commission
 
-        if txn_total_cost > self.portfolio_cash_to_dict()[txn.currency]['quantity']:
-            if settings.PRINT_EVENTS:
-                print(
-                    'WARNING: Not enough cash in the portfolio to '
-                    'carry out transaction. Transaction cost of %s '
-                    'exceeds remaining cash of %s. Transaction '
-                    'will proceed with a negative cash balance.' % (
-                        txn_total_cost, self.cash
-                    )
-                )
+        else:
+            #Stock transaction - coms applied to stock leg
+            txn_leg_stock = Transaction_Leg_Stock(txn.asset,txn.quantity, txn.dt, txn.price, txn.order_id + '_stock_1', txn.commission)            
+            qty_cash_leg = txn.quantity * txn.price  
+            txn_leg_cash = Transaction_Leg_Cash(txn.currency, qty_cash_leg, txn.dt, txn.fx_rate, txn.order_id + '_curncy_2',0.0)  
+            self.pos_handler.transact_position(txn_leg_stock)
+            self.pos_cash_handler.transact_cash_position(txn_leg_cash)
+            txn_total_cost = txn_leg_cash + txn.commission
 
-        self.pos_handler.transact_position(txn)
 
-        ##TC Create a transaction for cash and update the portfolio
-        txn_cash = Transaction(txn.currency, -txn_total_cost, txn.dt, 1.0, txn.order_id * uuid.uuid4().hex, commission=0.0)
-        self.pos_cash_handler.transact_cash_position(txn_cash)
-
-        # Form Portfolio history details **TO DO TC**
         direction = "LONG" if txn.direction > 0 else "SHORT"
-        description = "%s %s %s %0.2f %s" % (
+        description = "%s %s %s %0.2f %s %s" % (
             direction, txn.quantity, txn.asset.upper(),
-            txn.price, datetime.datetime.strftime(txn.dt, "%d/%m/%Y")
+            txn.price, txn.currency, datetime.datetime.strftime(txn.dt, "%d/%m/%Y")
         )
 
-        ####TC TO DO - Really sort this out no currency record#####
-        currency_bal = self.portfolio_cash_to_dict()[txn.currency]['quantity']
+        txn_currency_bal = self.portfolio_cash_to_dict()[txn.currency]['quantity']
 
         if direction == "LONG":
             pe = PortfolioEvent_MC(
                 dt=txn.dt, type='asset_transaction',
                 description=description,
+                currency=txn.currency,
                 debit=round(txn_total_cost, 2), credit=0.0,
-                balance=round(currency_bal, 2)
+                balance=round(txn_currency_bal, 2)
             )
             self.logger.info(
                 '(%s) Asset "%s" transacted LONG in portfolio "%s" '
-                '- Debit: %0.2f, Balance: %0.2f' % (
+                '- Currency: %s, Debit: %0.2f, Balance: %0.2f' % (
                     txn.dt.strftime(settings.LOGGING["DATE_FORMAT"]),
                     txn.asset, self.portfolio_id,
-                    round(txn_total_cost, 2), round(currency_bal, 2)
+                    txn.currency,
+                    round(txn_total_cost, 2), round(txn_currency_bal, 2)
                 )
             )
         else:
             pe = PortfolioEvent_MC(
                 dt=txn.dt, type='asset_transaction',
                 description=description,
+                currency=txn.currency,
                 debit=0.0, credit=-1.0 * round(txn_total_cost, 2),
-                balance=round(currency_bal, 2)
+                balance=round(txn_currency_bal, 2)
             )
             self.logger.info(
                 '(%s) Asset "%s" transacted SHORT in portfolio "%s" '
-                '- Credit: %0.2f, Balance: %0.2f' % (
+                '- Currency: %s, Credit: %0.2f, Balance: %0.2f' % (
                     txn.dt.strftime(settings.LOGGING["DATE_FORMAT"]),
                     txn.asset, self.portfolio_id,
-                    -1.0 * round(txn_total_cost, 2), round(currency_bal, 2)
+                    txn.currency,
+                    -1.0 * round(txn_total_cost, 2), round(txn_currency_bal, 2)
                 )
             )
         self.history.append(pe)

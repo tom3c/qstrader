@@ -1,7 +1,6 @@
 import numpy as np
 
-##TC - FX Transaction, changing one currency for another.  Needs to be completed
-class Transaction_FX(object):
+class Transaction_Leg_Stock(object):
 
     def __init__(
         self,
@@ -9,6 +8,7 @@ class Transaction_FX(object):
         quantity,
         dt,
         price,
+        fx_rate,
         order_id,
         commission=0.0
     ):
@@ -17,6 +17,7 @@ class Transaction_FX(object):
         self.direction = np.copysign(1, self.quantity)
         self.dt = dt
         self.price = price
+        self.fx_rate = fx_rate
         self.order_id = order_id
         self.commission = commission
 

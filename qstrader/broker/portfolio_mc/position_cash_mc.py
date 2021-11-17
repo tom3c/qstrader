@@ -8,7 +8,7 @@ class PositionCash_MC(object):
     def __init__(
         self,
         asset,
-        current_price,
+        current_fx_rate,
         current_dt,
         buy_quantity,
         sell_quantity,
@@ -18,7 +18,7 @@ class PositionCash_MC(object):
         sell_commission
     ):
         self.asset = asset
-        self.current_price = current_price
+        self.current_fx_rate = current_fx_rate
         self.current_dt = current_dt
         self.buy_quantity = buy_quantity
         self.sell_quantity = sell_quantity
@@ -31,13 +31,13 @@ class PositionCash_MC(object):
     def open_from_transaction(cls, transaction):
 
         asset = transaction.asset
-        current_price = transaction.price
+        current_fx_rate = transaction.fx_rate
         current_dt = transaction.dt
 
         if transaction.quantity > 0:
             buy_quantity = transaction.quantity
             sell_quantity = 0
-            avg_bought = current_price
+            avg_bought = current_fx_rate
             avg_sold = 0.0
             buy_commission = transaction.commission
             sell_commission = 0.0
@@ -45,13 +45,13 @@ class PositionCash_MC(object):
             buy_quantity = 0
             sell_quantity = -1.0 * transaction.quantity
             avg_bought = 0.0
-            avg_sold = current_price
+            avg_sold = current_fx_rate
             buy_commission = 0.0
             sell_commission = transaction.commission
 
         return cls(
             asset,
-            current_price,
+            current_fx_rate,
             current_dt,
             buy_quantity,
             sell_quantity,
@@ -81,7 +81,7 @@ class PositionCash_MC(object):
 
     @property
     def market_value(self):
-        return self.current_price * self.net_quantity
+        return self.current_fx_rate * self.net_quantity
 
     @property
     def avg_price(self):
@@ -141,30 +141,30 @@ class PositionCash_MC(object):
 
     @property
     def unrealised_pnl(self):
-        return (self.current_price - self.avg_price) * self.net_quantity
+        return (self.current_fx_rate - self.avg_price) * self.net_quantity
 
     @property
     def total_pnl(self):
         return self.realised_pnl + self.unrealised_pnl
 
-    def update_current_price(self, market_price, dt=None):
+    def update_current_fx_rate(self, fx_rate, dt=None):
         self._check_set_dt(dt)
 
-        if market_price <= 0.0:
+        if fx_rate <= 0.0:
             raise ValueError(
-                'Market price "%s" of asset "%s" must be positive to '
-                'update the position.' % (market_price, self.asset)
+                'Market fx rate "%s" of asset "%s" must be positive to '
+                'update the position.' % (fx_rate, self.asset)
             )
         else:
-            self.current_price = market_price
+            self.current_fx_rate = fx_rate
 
-    def _transact_buy(self, quantity, price, commission):
-        self.avg_bought = ((self.avg_bought * self.buy_quantity) + (quantity * price)) / (self.buy_quantity + quantity)
+    def _transact_buy(self, quantity, fx_rate, commission):
+        self.avg_bought = ((self.avg_bought * self.buy_quantity) + (quantity * fx_rate)) / (self.buy_quantity + quantity)
         self.buy_quantity += quantity
         self.buy_commission += commission
 
-    def _transact_sell(self, quantity, price, commission):
-        self.avg_sold = ((self.avg_sold * self.sell_quantity) + (quantity * price)) / (self.sell_quantity + quantity)
+    def _transact_sell(self, quantity, fx_rate, commission):
+        self.avg_sold = ((self.avg_sold * self.sell_quantity) + (quantity * fx_rate)) / (self.sell_quantity + quantity)
         self.sell_quantity += quantity
         self.sell_commission += commission
 
@@ -186,16 +186,16 @@ class PositionCash_MC(object):
         if transaction.quantity > 0:
             self._transact_buy(
                 transaction.quantity,
-                transaction.price,
+                transaction.rate,
                 transaction.commission
             )
         else:
             self._transact_sell(
                 -1.0 * transaction.quantity,
-                transaction.price,
+                transaction.rate,
                 transaction.commission
             )
 
         # Update the current trade information
-        self.update_current_price(transaction.price, transaction.dt)
+        self.update_current_fx_rate(transaction.fx_rate, transaction.dt)
         self.current_dt = transaction.dt
