@@ -1,7 +1,7 @@
 ######TC######
 
 import queue
-from typing_extensions import Required
+#from typing_extensions import Required
 
 import numpy as np
 
@@ -10,10 +10,12 @@ from qstrader.broker.broker import Broker
 from qstrader.broker.fee_model.fee_model import FeeModel
 from qstrader.broker.portfolio_mc.portfolio_mc import Portfolio_MC
 from qstrader.broker.transaction.transaction_mc import Transaction_MC
+from qstrader.execution.order_mc import Order_MC
 from qstrader.broker.fee_model.zero_fee_model import ZeroFeeModel
 
 ##TC - data handler is at this level.  I've added universe so also all relevant currencies are known too.
 # You can subscribe/redeem funds to/from broker account - These need to be allocated/unallocated to a portfolio to trade 
+# Portfolios are always the same base currency as broker - TC Edit, can change currency with FX transaction
 # Broker has one to many relationship with portfolios.  
 
 class SimulatedBroker_MC(Broker):
@@ -54,7 +56,7 @@ class SimulatedBroker_MC(Broker):
     ##if querying for base currency fx return 1
 
     def _check_currency(self, currency):
-        ##TC - Checks in universe####
+        ##TC - Checks in universe as has to be present - should be linked to market data loaded####
         if currency not in self.universe.get_cash_assets(self.current_dt):  
             raise ValueError(
                 "Currency '%s' is not available in universe. Could not "
@@ -108,9 +110,9 @@ class SimulatedBroker_MC(Broker):
         return {}
 
 
-    ##TC - Need to refactor to only do in base currency
+    ##TC - Only happens in base currency
     ## Then can use FX transactions to change currencies
-    def subscribe_funds_to_account(self, amount, currency=None):
+    def subscribe_funds_to_account(self, amount):
 
         if amount < 0.0:
             raise ValueError(
@@ -118,9 +120,7 @@ class SimulatedBroker_MC(Broker):
                 "'%s' to the broker account." % amount
             )
 
-        if currency is None:
-            currency = self.base_currency
-
+        currency = self.base_currency
         if self._check_currency(currency):
             self.cash_balances[currency] += amount
             if settings.PRINT_EVENTS:
@@ -130,9 +130,9 @@ class SimulatedBroker_MC(Broker):
                     )
                 )
 
-    ##TC - Need to refactor to only do in base currency
+    ##TC - Only happens in base currency
     ## Then can use FX transactions to change currencies
-    def withdraw_funds_from_account(self, amount, currency=None):
+    def withdraw_funds_from_account(self, amount):
 
         if amount < 0:
             raise ValueError(
@@ -140,9 +140,7 @@ class SimulatedBroker_MC(Broker):
                 "'%s' from the broker account." % amount
             )
 
-        if currency is None:
-            currency = self.base_currency
-
+        currency = self.base_currency
         if self._check_currency(currency):
             if amount > self.cash_balances[currency]:
                 raise ValueError(
@@ -160,12 +158,10 @@ class SimulatedBroker_MC(Broker):
                     )
                 )
 
-    ## TC Check - Returning local cash balance ##
-    def get_account_cash_balance(self, currency=None):
+    ## TC - Only happens in base currency
+    def get_account_cash_balance(self):
 
-        if currency is None:
-            return self.cash_balances
-
+        currency = self.base_currency
         if currency not in self.cash_balances.keys():
             raise ValueError(
                 "Currency of type '%s' is not found within the "
@@ -173,6 +169,10 @@ class SimulatedBroker_MC(Broker):
                 "cash balance." % currency
             )
         return self.cash_balances[currency]
+
+
+    # TC Below return portfolios values in base currency
+    # Ok to sum as port always same base as broker
 
     ## TC NEW ##
     def get_account_total_cash_value(self):
@@ -187,7 +187,6 @@ class SimulatedBroker_MC(Broker):
             master_tcv += pcv
         tcv_dict["master"] = master_tcv
         return tcv_dict
-
 
     def get_account_total_market_value(self):
 
@@ -251,9 +250,11 @@ class SimulatedBroker_MC(Broker):
             key=lambda port: port.portfolio_id
         )
 
-    ##TC Need to change so that subscriptions happen in base curreny
+    ##TC - Only happens in base currency
     ##Would need to apply fx transaction first for other currencies
-    def subscribe_funds_to_portfolio(self, portfolio_id, amount, currency):
+    def subscribe_funds_to_portfolio(self, portfolio_id, amount):
+
+        currency = self.base_currency
 
         if amount < 0.0:
             raise ValueError(
@@ -275,7 +276,7 @@ class SimulatedBroker_MC(Broker):
                     self.cash_balances[currency]
                 )
             )
-        self.portfolios[portfolio_id].subscribe_funds(self.current_dt, amount, currency)
+        self.portfolios[portfolio_id].subscribe_funds(self.current_dt, amount)
         self.cash_balances[currency] -= amount
         if settings.PRINT_EVENTS:
             print(
@@ -285,9 +286,11 @@ class SimulatedBroker_MC(Broker):
             )
 
 
-    ##TC Need to change so that withdraws happen in base curreny
+    ##TC - Only happens in base currency
     ##Would need to apply fx transaction first for other currencies
-    def withdraw_funds_from_portfolio(self, portfolio_id, amount, currency):
+    def withdraw_funds_from_portfolio(self, portfolio_id, amount):
+
+        currency = self.base_currency
 
         if amount < 0.0:
             raise ValueError(
@@ -300,18 +303,18 @@ class SimulatedBroker_MC(Broker):
                 "withdraw funds from a non-existent "
                 "portfolio. " % portfolio_id
             )
-        if amount > self.portfolios[portfolio_id].portfolio_cash_to_dict[currency]['quantity']:
+        if amount > self.portfolios[portfolio_id].portfolio_cash_to_dict()[currency]['quantity']:
             raise ValueError(
                 "Not enough cash in portfolio '%s' to withdraw "
                 "into brokerage master account. Withdrawal "
                 "amount %0.2f exceeds current portfolio cash "
                 "balance of %0.2f." % (
                     portfolio_id, amount,
-                    self.portfolios[portfolio_id].cash
+                    self.portfolios[portfolio_id].portfolio_cash_to_dict()[currency]['quantity']
                 )
             )
         self.portfolios[portfolio_id].withdraw_funds(
-            self.current_dt, amount, currency
+            self.current_dt, amount
         )
         self.cash_balances[currency] += amount
         if settings.PRINT_EVENTS:
@@ -321,10 +324,11 @@ class SimulatedBroker_MC(Broker):
                 )
             )
 
-    ##TC - Removed as cash are treated as positions
-    # def get_portfolio_cash_balance(self, portfolio_id):
 
-    def get_portfolio_total_cash_value(self, portfolio_id):
+    # TC Below return portfolios values in base currency
+    # Portfolios always same base as broker
+
+    def get_portfolio_cash_balance(self, portfolio_id):
 
         if portfolio_id not in self.portfolios.keys():
             raise ValueError(
@@ -332,7 +336,7 @@ class SimulatedBroker_MC(Broker):
                 "retrieve cash balance for non-existent "
                 "portfolio." % portfolio_id
             )
-        return self.portfolios[portfolio_id].total_cash_value
+        return self.portfolios[portfolio_id].total_cash_value_base
 
     def get_portfolio_total_market_value(self, portfolio_id):
 
@@ -342,7 +346,7 @@ class SimulatedBroker_MC(Broker):
                 "Cannot return total market value for a "
                 "non-existent portfolio." % portfolio_id
             )
-        return self.portfolios[portfolio_id].total_market_value
+        return self.portfolios[portfolio_id].total_market_value_base
 
     def get_portfolio_total_equity(self, portfolio_id):
 
@@ -352,8 +356,9 @@ class SimulatedBroker_MC(Broker):
                 "Cannot return total equity for a "
                 "non-existent portfolio." % portfolio_id
             )
-        return self.portfolios[portfolio_id].total_equity
+        return self.portfolios[portfolio_id].total_equity_base
 
+    ##TC - To get all positions
     def get_portfolio_as_dict(self, portfolio_id):
  
         if portfolio_id not in self.portfolios.keys():
@@ -363,7 +368,19 @@ class SimulatedBroker_MC(Broker):
             )
         return self.portfolios[portfolio_id].portfolio_to_dict()
 
-    ##TC - Added to get cash positions
+
+    ##TC - To get equity positions
+    def get_portfolio_equity_as_dict(self, portfolio_id):
+ 
+        if portfolio_id not in self.portfolios.keys():
+            raise KeyError(
+                "Cannot return portfolio as dictionary since "
+                "portfolio with ID '%s' does not exist." % portfolio_id
+            )
+        return self.portfolios[portfolio_id].portfolio_equity_to_dict()
+
+
+    ##TC - To get cash positions
     def get_portfolio_cash_as_dict(self, portfolio_id):
  
         if portfolio_id not in self.portfolios.keys():
@@ -401,19 +418,19 @@ class SimulatedBroker_MC(Broker):
 
         # Obtain a fx rate for first currency if not base
         if first_currency != self.base_currency:
-            fx_rate_first = self._get_mark(dt, order.asset, order.order_id)       
+            fx_rate_first = self._get_mark(dt, first_currency, order.direction, order.order_id)   
         else:
             fx_rate_first = 1.0  
 
         # Obtain a fx rate for second currency if not base
         if second_currency != self.base_currency:
-            fx_rate_second = self._get_mark(dt, order.asset, order.order_id)
+            fx_rate_second = self._get_mark(dt, second_currency, -order.direction, order.order_id) 
         else:
             fx_rate_second = 1.0 
 
         # Calculate the consideration and total commission
         # based on the commission model
-        consideration = round((fx_rate_first * order.quantity) / fx_rate_second)
+        consideration = (fx_rate_first * order.quantity) / fx_rate_second
         total_commission = self.fee_model.calc_total_cost(
             order.asset, order.quantity, consideration, self
         )
@@ -422,8 +439,8 @@ class SimulatedBroker_MC(Broker):
         # Then check that sufficient cash exists to carry
         # out the order, else scale it down.  
         if order.direction > 0:
-            ##Currency buying fx is second so need to check have enough
-            total_currency_second = self.portfolios[portfolio_id].portfolio_cash_to_dict()[first_currency]['quantity']
+            ##Currency buying fx is second so need to check have enough                
+            total_currency_second = self.portfolios[portfolio_id].get_position(second_currency)
             if est_total_cost > total_currency_second:
                 if settings.PRINT_EVENTS:
                     print(
@@ -433,7 +450,7 @@ class SimulatedBroker_MC(Broker):
                     )
         else:
             ##Currency being sold is first so need to check have enough
-            total_currency_first = self.portfolios[portfolio_id].portfolio_cash_to_dict()[first_currency]['quantity']
+            total_currency_first = self.portfolios[portfolio_id].get_position(first_currency)
             if order.quantity > total_currency_first:
                 if settings.PRINT_EVENTS:
                     print(
@@ -469,28 +486,32 @@ class SimulatedBroker_MC(Broker):
 
         if order.currency is None:
             currency = self.universe.get_equity_asset_currency(order.asset)
+        else:
+            currency = order.currency
 
-        price = self._get_mark(dt, order.asset, order.order_id)
+        price = self._get_mark(dt, order.asset, order.direction, order.order_id)
 
         if currency != self.base_currency:
             # Obtain a fx rate for currency if not base
-            fx_rate = self._get_mark(dt, currency, order.order_id)
+            fx_rate = self._get_mark(dt, currency, order.direction, order.order_id)
         else:
             fx_rate = 1    
 
         # Check that sufficient cash exists to carry out the
         # order, else scale it down.  
         # Auto FX
-        consideration = round(price * order.quantity)
+        consideration = price * order.quantity
         total_commission = self.fee_model.calc_total_cost(
             order.asset, order.quantity, consideration, self
         )
 
         est_total_cost = consideration + total_commission
-        total_currency = self.portfolios[portfolio_id].portfolio_cash_to_dict()[currency]['quantity']
+        #total_currency = self.portfolios[portfolio_id].portfolio_cash_to_dict()[currency]['quantity']
+        total_currency = self.portfolios[portfolio_id].get_position(currency)
 
-        ## TC, should probably check you have adequate amount of 
-        ## asset to sell if selling order
+
+        #Allows to go short and run negative cash.  Need to update realised P&L to factor in
+        #borrow cost and financing fee
 
         if order.direction > 0:
             if est_total_cost > total_currency:
@@ -499,38 +520,19 @@ class SimulatedBroker_MC(Broker):
                     #Carry out auto FX from base currency.  Already have rate - fx_rate
                     amount_require = est_total_cost - total_currency
 
-                    consideration_auto_fx = round(fx_rate * amount_require)
-                    total_commission_auto_fx = self.fee_model.calc_total_cost(
-                        currency, amount_require, consideration_auto_fx, self
+                    #Create auto FX order and process with _execute_fx_order
+                    auto_fx_order = Order_MC(
+                        'FX_ORDER',
+                        order.cur_dt,
+                        currency,
+                        amount_require,
+                        0.0,            #commision charged on stock order
+                        self.base_currency,
+                        False,
+                        order.order_id +'_Auto_FX',
                     )
-                    amount_auto_fx = consideration_auto_fx + total_commission_auto_fx
 
-                    total_currency_base = self.portfolios[portfolio_id].portfolio_cash_to_dict()[self.base_currency]['quantity']
-                
-                    if amount_auto_fx  > total_currency_base:
-                        if settings.PRINT_EVENTS:
-                            print(
-                                "WARNING: Estimated Auto FX transaction size of %0.2f exceeds "
-                                "available cash of %0.2f. Transaction will still occur "
-                                "with a negative cash balance." % (amount_auto_fx , total_currency_base)
-                            )
-
-                    #Create Auto FX Transaction 
-                    txn_auto_fx = Transaction_MC(
-                        "FX_TRANSACTION",
-                        currency, amount_auto_fx, self.current_dt,
-                        fx_rate, self.base_currency, 1.0, order.order_id +'_Auto_FX', commission=total_commission
-                    )
-                    self.portfolios[portfolio_id].transact_asset(txn_auto_fx)
-                    if settings.PRINT_EVENTS:
-                        print(
-                            "(%s) - executed auto fx order: %s, qty: %s, price: %0.2f, "
-                            "consideration: %0.2f, commission: %0.2f, total: %0.2f" % (
-                                self.current_dt, currency, amount_auto_fx, fx_rate,
-                                consideration, total_commission,
-                                consideration + total_commission
-                            )
-                        )
+                    self._execute_fx_order(dt, portfolio_id, auto_fx_order)
 
                 else:
                     if settings.PRINT_EVENTS:
@@ -539,37 +541,12 @@ class SimulatedBroker_MC(Broker):
                             "available cash of %0.2f. Transaction will still occur "
                             "with a negative cash balance." % (est_total_cost, total_currency)
                         )
-            else:
 
-                #Create Stock Transaction 
-                txn_stock = Transaction_MC(
-                    "STOCK_TRANSACTION",
-                    order.asset, order.quantity, self.current_dt,
-                    price, currency, fx_rate, order.order_id, commission=total_commission
-                )
-                self.portfolios[portfolio_id].transact_asset(txn_stock)
-                if settings.PRINT_EVENTS:
-                    print(
-                        "(%s) - executed order: %s, qty: %s, price: %0.2f, "
-                        "consideration: %0.2f, commission: %0.2f, total: %0.2f" % (
-                            self.current_dt, order.asset, order.quantity, price,
-                            consideration, total_commission,
-                            consideration + total_commission
-                        )
-                    )
-        else:
-
-            current_stock_pos = self.portfolios[portfolio_id].get_position(order.asset)
-            if abs(order.quantity) > current_stock_pos:
-                #Adjust order size to sell max available
-                scaled_quantity = current_stock_pos 
-            else:
-                scaled_quantity = order.quantity 
 
             #Create Stock Transaction 
             txn_stock = Transaction_MC(
                 "STOCK_TRANSACTION",
-                order.asset, scaled_quantity, self.current_dt,
+                order.asset, order.quantity, self.current_dt,
                 price, currency, fx_rate, order.order_id, commission=total_commission
             )
             self.portfolios[portfolio_id].transact_asset(txn_stock)
@@ -577,42 +554,49 @@ class SimulatedBroker_MC(Broker):
                 print(
                     "(%s) - executed order: %s, qty: %s, price: %0.2f, "
                     "consideration: %0.2f, commission: %0.2f, total: %0.2f" % (
-                        self.current_dt, order.asset, scaled_quantity, price,
+                    self.current_dt, order.asset, order.quantity, price,
+                    consideration, total_commission,
+                    consideration + total_commission
+                        )
+            )
+
+        else:
+
+            #Create Stock Transaction 
+            txn_stock = Transaction_MC(
+                "STOCK_TRANSACTION",
+                order.asset, order.quantity, self.current_dt,
+                price, currency, fx_rate, order.order_id, commission=total_commission
+            )
+            self.portfolios[portfolio_id].transact_asset(txn_stock)
+            if settings.PRINT_EVENTS:
+                print(
+                    "(%s) - executed order: %s, qty: %s, price: %0.2f, "
+                    "consideration: %0.2f, commission: %0.2f, total: %0.2f" % (
+                        self.current_dt, order.asset, order.quantity, price,
                         consideration, total_commission,
                         consideration + total_commission
                     )
                 )
 
             if order.auto_fx and currency != self.base_currency:
-
-                    consideration_auto_fx = round(fx_rate * consideration)
                     
-                    ##Note commissions on auto FX incorrect - current using zero fee model
-                    total_commission_auto_fx = self.fee_model.calc_total_cost(
-                        currency, consideration_auto_fx, consideration_auto_fx, self
+                    #Create auto FX order and process with _execute_fx_order
+                    auto_fx_order = Order_MC(
+                        'FX_ORDER',
+                        order.cur_dt,
+                        currency,
+                        consideration,
+                        0.0,            #commision charged on stock order
+                        self.base_currency,
+                        False,
+                        order.order_id +'_Auto_FX',
                     )
-                    amount_auto_fx = -(consideration_auto_fx + total_commission_auto_fx) #Negative as selling
 
-                    #Create Auto FX Transaction from resulting cash generated
-                    txn_auto_fx = Transaction_MC(
-                        "FX_TRANSACTION",
-                        currency, amount_auto_fx, self.current_dt,
-                        fx_rate, self.base_currency, 1.0, order.order_id +'_Auto_FX', commission=total_commission
-                    )
-                    self.portfolios[portfolio_id].transact_asset(txn_auto_fx)
-                    if settings.PRINT_EVENTS:
-                        print(
-                            "(%s) - executed auto fx order: %s, qty: %s, price: %0.2f, "
-                            "consideration: %0.2f, commission: %0.2f, total: %0.2f" % (
-                                self.current_dt, currency, amount_auto_fx, fx_rate,
-                                consideration, total_commission,
-                                consideration + total_commission
-                            )
-                        )
+                    self._execute_fx_order(dt, portfolio_id, auto_fx_order)
 
 
-
-    def _get_mark(self, dt, asset, order_id):
+    def _get_mark(self, dt, asset, direction, order_id):
 
         price_err_msg = (
             "Could not obtain a latest market price for "
@@ -622,16 +606,21 @@ class SimulatedBroker_MC(Broker):
             )
         )
 
-        bid_ask_fx_second = self.data_handler.get_asset_latest_bid_ask_price(
+        bid_ask = self.data_handler.get_asset_latest_bid_ask_price(
             dt, asset
         )
             
-        if bid_ask_fx_second == (np.NaN, np.NaN):
+        if bid_ask == (np.NaN, np.NaN):
             raise ValueError(price_err_msg)
 
-        ## Note doesn't handle bid offer property.  Assumes no spread
-        return bid_ask_fx_second[1]
+        # Calculate the consideration and total commission
+        # based on the commission model
+        if direction > 0:
+            price = bid_ask[1]
+        else:
+            price = bid_ask[0]
 
+        return price
 
     ## TC Note - SUBMIT FX ORDER will use the below function.  Order contains asset, quantity and date.  
     ## The transaction type can be determined by the asset type. This is just taking orders from models
@@ -676,6 +665,15 @@ class SimulatedBroker_MC(Broker):
                     asset, mid_price, self.current_dt
                 )
 
+                asset_curreny = self.portfolios[portfolio].pos_handler.positions[asset].currency
+                if asset_curreny != self.portfolios[portfolio].base_currency:
+                    mid_price = self.data_handler.get_asset_latest_mid_price(
+                        dt, asset_curreny
+                    )
+                    self.portfolios[portfolio].update_fx_rate_of_asset(
+                        asset, mid_price, self.current_dt
+                    )
+
             for cash_asset in self.portfolios[portfolio].pos_cash_handler.positions:
                 
                 ##TC - Base currency always 1 so not updated
@@ -683,7 +681,7 @@ class SimulatedBroker_MC(Broker):
                     mid_price = self.data_handler.get_asset_latest_mid_price(
                         dt, cash_asset
                     )
-                    self.portfolios[portfolio].update_market_value_of_asset(
+                    self.portfolios[portfolio].update_fx_rate(
                         cash_asset, mid_price, self.current_dt
                     )
 

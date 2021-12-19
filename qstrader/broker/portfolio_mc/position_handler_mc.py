@@ -4,7 +4,6 @@ from qstrader.broker.portfolio_mc.position_mc import Position_MC
 
 ##TC - Need to add logic that creates new position if direction changes
 
-
 class PositionHandler_MC(object):
 
     def __init__(self):
@@ -22,26 +21,36 @@ class PositionHandler_MC(object):
         if self.positions[asset].net_quantity == 0:
             del self.positions[asset]
 
-    def total_market_value(self):
+    def total_market_value_base(self):
         return sum(
-            pos.market_value
-            for asset, pos in self.positions.items()
+            pos.market_value_base for asset, pos in self.positions.items()
         )
 
-    def total_unrealised_pnl(self):
+    def total_market_value_local(self, currency):
+        pos_list = list(self.positions.values())
         return sum(
-            pos.unrealised_pnl
-            for asset, pos in self.positions.items()
+            pos.market_value_local for pos in pos_list if (pos.currency == currency)
         )
 
-    def total_realised_pnl(self):
+    def total_unrealised_pnl_base(self):
         return sum(
-            pos.realised_pnl
-            for asset, pos in self.positions.items()
+            pos.unrealised_pnl_base for asset, pos in self.positions.items()
         )
 
-    def total_pnl(self):
+    def total_unrealised_pnl_local(self, currency):
+        pos_list = list(self.positions.values())
         return sum(
-            pos.total_pnl
-            for asset, pos in self.positions.items()
+            pos.unrealised_pnl_local for pos in pos_list if (pos.currency == currency)
+        )
+
+    def total_realised_pnl_local(self, currency):
+        pos_list = list(self.positions.values())
+        return sum(
+            pos.realised_pnl_local for pos in pos_list if (pos.currency == currency)
+        )
+
+    def total_pnl_local(self, currency):
+        pos_list = list(self.positions.values())
+        return sum(
+            pos.total_pnl_local for pos in pos_list if (pos.currency == currency)
         )

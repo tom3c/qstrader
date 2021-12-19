@@ -1,4 +1,0 @@
-[
-  "tests_tc/unit/asset/universe/test_static_multi_currency_universe.py::test_static_multi_currency_universe_with_cash[equity_assets0-cash_assets0-dt0-expected_equity0-expected_cash0]",
-  "tests_tc/unit/asset/universe/test_static_multi_currency_universe.py::test_static_multi_currency_universe_with_cash[equity_assets1-cash_assets1-dt1-expected_equity1-expected_cash1]"
-]

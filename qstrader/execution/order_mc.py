@@ -26,6 +26,7 @@ class Order_MC(object):
         self.quantity = quantity
         self.commission = commission
         self.currency = currency
+        self.auto_fx = auto_fx
         self.direction = np.copysign(1, self.quantity)
         self.order_id = self._set_or_generate_order_id(order_id)
 

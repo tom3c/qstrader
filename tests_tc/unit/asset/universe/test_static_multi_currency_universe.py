@@ -8,8 +8,6 @@ import pytest
 import pytz
 
 from qstrader.asset.universe_mc.static_mc import StaticUniverse_MC
-from qstrader.asset.asset_mc.equity_mc import Equity_MC
-
 
 @pytest.mark.parametrize(
     'assets,dt,expected_equity, expected_cash',

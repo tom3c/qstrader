@@ -5,6 +5,7 @@ class Transaction_Leg_Stock(object):
     def __init__(
         self,
         asset,
+        currency,
         quantity,
         dt,
         price,
@@ -13,6 +14,7 @@ class Transaction_Leg_Stock(object):
         commission=0.0
     ):
         self.asset = asset
+        self.currency = currency
         self.quantity = quantity
         self.direction = np.copysign(1, self.quantity)
         self.dt = dt
@@ -22,9 +24,10 @@ class Transaction_Leg_Stock(object):
         self.commission = commission
 
     def __repr__(self):
-        return "%s(asset=%s, quantity=%s, dt=%s, " \
+        return "%s(asset=%s, currency=%s, quantity=%s, dt=%s, " \
             "price=%s, order_id=%s)" % (
                 type(self).__name__, self.asset,
+                self.currency,
                 self.quantity, self.dt,
                 self.price, self.order_id
             )

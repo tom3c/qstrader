@@ -19,6 +19,9 @@ class StaticUniverse_MC(Universe_MC):
 
         self.cash_dict = dict((c, Cash_MC(c)) for c in cash_list)      
     
+    def get_assets(self, dt):
+        return list(self.equity_dict.keys()) + list(self.cash_dict.keys())
+
     def get_equity_assets(self, dt):
         return list(self.equity_dict.keys())
 

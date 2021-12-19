@@ -3,7 +3,7 @@ from math import floor
 import numpy as np
 
 
-class PositionCash_MC(object):
+class Position_MC_Cash(object):
 
     def __init__(
         self,
@@ -12,8 +12,8 @@ class PositionCash_MC(object):
         current_dt,
         buy_quantity,
         sell_quantity,
-        avg_bought,
-        avg_sold,
+        avg_rate_bought,
+        avg_rate_sold,
         buy_commission,
         sell_commission
     ):
@@ -22,8 +22,8 @@ class PositionCash_MC(object):
         self.current_dt = current_dt
         self.buy_quantity = buy_quantity
         self.sell_quantity = sell_quantity
-        self.avg_bought = avg_bought
-        self.avg_sold = avg_sold
+        self.avg_rate_bought = avg_rate_bought
+        self.avg_rate_sold = avg_rate_sold
         self.buy_commission = buy_commission
         self.sell_commission = sell_commission
 
@@ -31,21 +31,21 @@ class PositionCash_MC(object):
     def open_from_transaction(cls, transaction):
 
         asset = transaction.asset
-        current_fx_rate = transaction.fx_rate
+        current_fx_rate =  transaction.fx_rate
         current_dt = transaction.dt
 
         if transaction.quantity > 0:
             buy_quantity = transaction.quantity
             sell_quantity = 0
-            avg_bought = current_fx_rate
-            avg_sold = 0.0
+            avg_rate_bought = current_fx_rate
+            avg_rate_sold = 0.0
             buy_commission = transaction.commission
             sell_commission = 0.0
         else:
             buy_quantity = 0
             sell_quantity = -1.0 * transaction.quantity
-            avg_bought = 0.0
-            avg_sold = current_fx_rate
+            avg_rate_bought = 0.0
+            avg_rate_sold = current_fx_rate
             buy_commission = 0.0
             sell_commission = transaction.commission
 
@@ -55,14 +55,13 @@ class PositionCash_MC(object):
             current_dt,
             buy_quantity,
             sell_quantity,
-            avg_bought,
-            avg_sold,
+            avg_rate_bought,
+            avg_rate_sold,
             buy_commission,
             sell_commission
         )
 
     def _check_set_dt(self, dt):
-
         if dt is not None:
             if (dt < self.current_dt):
                 raise ValueError(
@@ -80,74 +79,80 @@ class PositionCash_MC(object):
             return np.copysign(1, self.net_quantity)
 
     @property
-    def market_value(self):
+    def market_value_base(self):
         return self.current_fx_rate * self.net_quantity
 
+    @property
+    def market_value_local(self):
+        return self.net_quantity  
+
+    #Added get exposure for derivs  
+    @property
+    def exposure_base(self):
+        return self.current_fx_rate * self.net_quantity
+
+    @property
+    def exposure_local(self):
+        return self.net_quantity  
+
+    ##Includes comms - currently in local currency
     @property
     def avg_price(self):
         if self.net_quantity == 0:
             return 0.0
         elif self.net_quantity > 0:
-            return (self.avg_bought * self.buy_quantity + self.buy_commission) / self.buy_quantity
+            return (self.avg_rate_bought * self.buy_quantity + self.buy_commission) / self.buy_quantity
         else:
-            return (self.avg_sold * self.sell_quantity - self.sell_commission) / self.sell_quantity
+            return (self.avg_rate_sold * self.sell_quantity - self.sell_commission) / self.sell_quantity
 
     @property
     def net_quantity(self):
         return self.buy_quantity - self.sell_quantity
 
     @property
-    def total_bought(self):
-        return self.avg_bought * self.buy_quantity
+    def total_bought_local(self):
+        return self.avg_rate_bought * self.buy_quantity
 
     @property
-    def total_sold(self):
-        return self.avg_sold * self.sell_quantity
+    def total_sold_local(self):
+        return self.avg_rate_sold * self.sell_quantity
 
     @property
-    def net_total(self):
-        return self.total_sold - self.total_bought
+    def net_total_local(self):
+        return self.total_sold_local - self.total_bought_local
 
     @property
-    def commission(self):
+    def commission_local(self):
         return self.buy_commission + self.sell_commission
 
     @property
-    def net_incl_commission(self):
-        return self.net_total - self.commission
+    def net_incl_commission_local(self):
+        return self.net_total_local - self.commission_local
+
+    ##LOCAL P&L###
+    ##You don't get local P&L, you are hold cash balance - maybe interest rate should be added in future
+    @property
+    def realised_pnl_local(self):
+        #This should be interest - Will apply later, for now zero
+        return 0.0
 
     @property
-    def realised_pnl(self):
-        if self.direction == 1:
-            if self.sell_quantity == 0:
-                return 0.0
-            else:
-                return (
-                    ((self.avg_sold - self.avg_bought) * self.sell_quantity) -
-                    ((self.sell_quantity / self.buy_quantity) * self.buy_commission) -
-                    self.sell_commission
-                )
-        elif self.direction == -1:
-            if self.buy_quantity == 0:
-                return 0.0
-            else:
-                return (
-                    ((self.avg_sold - self.avg_bought) * self.buy_quantity) -
-                    ((self.buy_quantity / self.sell_quantity) * self.sell_commission) -
-                    self.buy_commission
-                )
-        else:
-            return self.net_incl_commission
+    def unrealised_pnl_local(self):
+        #This should be interest - Will apply later, for now zero
+        return 0.0
 
     @property
-    def unrealised_pnl(self):
+    def total_pnl_local(self):
+        return self.realised_pnl_local + self.unrealised_pnl_local
+
+
+    ##BASE P&L###
+    @property
+    def unrealised_pnl_base(self):
         return (self.current_fx_rate - self.avg_price) * self.net_quantity
 
-    @property
-    def total_pnl(self):
-        return self.realised_pnl + self.unrealised_pnl
-
-    def update_current_fx_rate(self, fx_rate, dt=None):
+    ##TC##
+    def update_current_fx(self, fx_rate, dt=None):
         self._check_set_dt(dt)
 
         if fx_rate <= 0.0:
@@ -156,15 +161,16 @@ class PositionCash_MC(object):
                 'update the position.' % (fx_rate, self.asset)
             )
         else:
-            self.current_fx_rate = fx_rate
+            self.current_fx_rate  = fx_rate
 
-    def _transact_buy(self, quantity, fx_rate, commission):
-        self.avg_bought = ((self.avg_bought * self.buy_quantity) + (quantity * fx_rate)) / (self.buy_quantity + quantity)
+
+    def _transact_buy(self, quantity, fx_rate,commission):
+        self.avg_rate_bought = ((self.avg_rate_bought * self.buy_quantity) + (quantity * fx_rate)) / (self.buy_quantity + quantity)
         self.buy_quantity += quantity
         self.buy_commission += commission
 
     def _transact_sell(self, quantity, fx_rate, commission):
-        self.avg_sold = ((self.avg_sold * self.sell_quantity) + (quantity * fx_rate)) / (self.sell_quantity + quantity)
+        self.avg_rate_sold = ((self.avg_rate_sold * self.sell_quantity) + (quantity * fx_rate)) / (self.sell_quantity + quantity)
         self.sell_quantity += quantity
         self.sell_commission += commission
 
@@ -186,16 +192,16 @@ class PositionCash_MC(object):
         if transaction.quantity > 0:
             self._transact_buy(
                 transaction.quantity,
-                transaction.rate,
+                transaction.fx_rate,       
                 transaction.commission
             )
         else:
             self._transact_sell(
                 -1.0 * transaction.quantity,
-                transaction.rate,
+                transaction.fx_rate,
                 transaction.commission
             )
 
         # Update the current trade information
-        self.update_current_fx_rate(transaction.fx_rate, transaction.dt)
+        self.update_current_fx(transaction.fx_rate, transaction.dt)
         self.current_dt = transaction.dt

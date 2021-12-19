@@ -577,7 +577,9 @@ class SimulatedBroker(Broker):
             price = bid_ask[1]
         else:
             price = bid_ask[0]
-        consideration = round(price * order.quantity)
+
+            
+        consideration = price * order.quantity
         total_commission = self.fee_model.calc_total_cost(
             order.asset, order.quantity, consideration, self
         )

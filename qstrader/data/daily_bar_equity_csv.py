@@ -7,7 +7,7 @@ import pytz
 from qstrader import settings
 
 
-class CSVDailyBarFxDataSource(object):
+class CSVDailyBarEquityDataSource(object):
 
     def __init__(self, csv_dir, asset_type, adjust_prices=True, csv_symbols=None):
         self.csv_dir = csv_dir

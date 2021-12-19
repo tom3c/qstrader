@@ -37,7 +37,6 @@ class Transaction_MC(object):
                 self.price, self.fx_rate, self.order_id
             )
 
-
     #Note - comms currency done in trade currency
     @property
     def cost_without_commission(self):

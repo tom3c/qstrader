@@ -14,20 +14,26 @@ def test_basic_long_equities_position():
     """
     # Initial long details
     asset = 'EQ:MSFT'
+    type = "STOCK_TRANSACTION"
     quantity = 100
     dt = pd.Timestamp('2020-06-16 15:00:00', tz=pytz.UTC)
     price = 193.74
+    currency = 'USD'
+    fx_rate = 1.0
     order_id = 123
     commission = 1.0
 
     # Create the initial transaction and position
     transaction = Transaction_MC(
+        type,
         asset,
-        quantity=quantity,
-        dt=dt,
-        price=price,
-        order_id=order_id,
-        commission=commission
+        quantity,
+        dt,
+        price,
+        currency,
+        fx_rate,
+        order_id,
+        commission
     )
     position = Position_MC.open_from_transaction(transaction)
 
@@ -71,6 +77,7 @@ def test_basic_long_equities_position_with_fx():
     are calculated for a simple long equities position.
     """
     # Initial long details
+    type = "STOCK_TRANSACTION"
     asset = 'EQ:MSFT'
     quantity = 100
     dt = pd.Timestamp('2020-06-16 15:00:00', tz=pytz.UTC)
@@ -81,12 +88,14 @@ def test_basic_long_equities_position_with_fx():
 
     # Create the initial transaction and position
     transaction = Transaction_MC(
+        type,
         asset,
-        quantity=quantity,
-        dt=dt,
-        price=price,
-        order_id=order_id,
+        quantity,
+        dt,
+        price,
+        currency='USD',
         fx_rate = fx_rate,
+        order_id = order_id,
         commission=commission
     )
     position = Position_MC.open_from_transaction(transaction)
@@ -130,6 +139,7 @@ def test_position_long_twice():
     with differing quantities and market prices.
     """
     # Initial long details
+    type = "STOCK_TRANSACTION"
     asset = 'EQ:MSFT'
     quantity = 100
     dt = pd.Timestamp('2020-06-16 15:00:00', tz=pytz.UTC)
@@ -139,10 +149,13 @@ def test_position_long_twice():
 
     # Create the initial transaction and position
     first_transaction = Transaction_MC(
+        type,
         asset,
         quantity=quantity,
         dt=dt,
         price=price,
+        currency = 'EUR',
+        fx_rate = 1.0,
         order_id=order_id,
         commission=commission
     )
@@ -159,10 +172,13 @@ def test_position_long_twice():
     second_order_id = 234
     second_commission = 1.0
     second_transaction = Transaction_MC(
+        type,
         asset,
         quantity=second_quantity,
         dt=second_dt,
         price=second_price,
+        currency = 'EUR',
+        fx_rate = 1.0,
         order_id=second_order_id,
         commission=second_commission
     )
@@ -199,6 +215,7 @@ def test_position_long_twice_with_fx():
     with differing quantities and market prices.
     """
     # Initial long details
+    type = "STOCK_TRANSACTION"
     asset = 'EQ:MSFT'
     quantity = 100
     dt = pd.Timestamp('2020-06-16 15:00:00', tz=pytz.UTC)
@@ -209,11 +226,13 @@ def test_position_long_twice_with_fx():
 
     # Create the initial transaction and position
     first_transaction = Transaction_MC(
+        type,
         asset,
         quantity=quantity,
         dt=dt,
         price=price,
         order_id=order_id,
+        currency = 'EUR',
         fx_rate = fx_rate,
         commission=commission
     )
@@ -231,11 +250,13 @@ def test_position_long_twice_with_fx():
     second_fx_rate = 0.7
     second_commission = 1.0
     second_transaction = Transaction_MC(
+        type,
         asset,
         quantity=second_quantity,
         dt=second_dt,
         price=second_price,
         order_id=second_order_id,
+        currency = 'EUR',
         fx_rate = second_fx_rate,
         commission=second_commission
     )
@@ -271,6 +292,7 @@ def test_position_long_close():
     subsequent closing trade.
     """
     # Initial long details
+    type = "STOCK_TRANSACTION"
     asset = 'EQ:AMZN'
     quantity = 100
     dt = pd.Timestamp('2020-06-16 15:00:00', tz=pytz.UTC)
@@ -280,10 +302,13 @@ def test_position_long_close():
 
     # Create the initial transaction and position
     first_transaction = Transaction_MC(
+        type,
         asset,
         quantity=quantity,
         dt=dt,
         price=price,
+        currency = 'EUR',
+        fx_rate = 1.0,
         order_id=order_id,
         commission=commission
     )
@@ -300,10 +325,13 @@ def test_position_long_close():
     second_order_id = 234
     second_commission = 6.81
     second_transaction = Transaction_MC(
+        type,
         asset,
         quantity=second_quantity,
         dt=second_dt,
         price=second_price,
+        currency = 'EUR',
+        fx_rate = 1.0,
         order_id=second_order_id,
         commission=second_commission
     )
@@ -336,6 +364,7 @@ def test_position_long_close_with_fx():
     subsequent closing trade.
     """
     # Initial long details
+    type = "STOCK_TRANSACTION"
     asset = 'EQ:AMZN'
     quantity = 100
     dt = pd.Timestamp('2020-06-16 15:00:00', tz=pytz.UTC)
@@ -346,11 +375,13 @@ def test_position_long_close_with_fx():
 
     # Create the initial transaction and position
     first_transaction = Transaction_MC(
+        type,
         asset,
         quantity=quantity,
         dt=dt,
         price=price,
         order_id=order_id,
+        currency = 'EUR',
         fx_rate = fx_rate,      
         commission=commission
     )
@@ -370,12 +401,14 @@ def test_position_long_close_with_fx():
     second_fx_rate = 1.15
     second_commission = 6.81
     second_transaction = Transaction_MC(
+        type,
         asset,
         quantity=second_quantity,
         dt=second_dt,
         price=second_price,
-        order_id=second_order_id,
+        currency = 'EUR',
         fx_rate = second_fx_rate,
+        order_id=second_order_id,
         commission=second_commission
     )
     position.transact(second_transaction)
@@ -411,6 +444,7 @@ def test_position_long_and_short():
     market prices.
     """
     # Initial long details
+    type = "STOCK_TRANSACTION"
     asset = 'EQ:SPY'
     quantity = 100
     dt = pd.Timestamp('2020-06-16 15:00:00', tz=pytz.UTC)
@@ -420,10 +454,13 @@ def test_position_long_and_short():
 
     # Create the initial transaction and position
     first_transaction = Transaction_MC(
+        type,
         asset,
         quantity=quantity,
         dt=dt,
         price=price,
+        currency = 'EUR',
+        fx_rate=1.0,
         order_id=order_id,
         commission=commission
     )
@@ -440,10 +477,13 @@ def test_position_long_and_short():
     second_order_id = 234
     second_commission = 1.42
     second_transaction = Transaction_MC(
+        type,
         asset,
         quantity=second_quantity,
         dt=second_dt,
         price=second_price,
+        currency = 'EUR',
+        fx_rate=1.0,
         order_id=second_order_id,
         commission=second_commission
     )
@@ -478,6 +518,7 @@ def test_position_long_and_short_with_fx():
     market prices.
     """
     # Initial long details
+    type = "STOCK_TRANSACTION"
     asset = 'EQ:SPY'
     quantity = 100
     dt = pd.Timestamp('2020-06-16 15:00:00', tz=pytz.UTC)
@@ -488,11 +529,13 @@ def test_position_long_and_short_with_fx():
 
     # Create the initial transaction and position
     first_transaction = Transaction_MC(
+        type,
         asset,
         quantity=quantity,
         dt=dt,
         price=price,
         order_id=order_id,
+        currency = 'EUR',
         fx_rate=fx_rate,
         commission=commission
     )
@@ -512,11 +555,13 @@ def test_position_long_and_short_with_fx():
     second_fx_rate = 1.05
     second_commission = 1.42
     second_transaction = Transaction_MC(
+        type,
         asset,
         quantity=second_quantity,
         dt=second_dt,
         price=second_price,
         order_id=second_order_id,
+        currency = 'EUR',
         fx_rate = second_fx_rate,
         commission=second_commission
     )
@@ -554,6 +599,7 @@ def test_position_long_short_long_short_ending_long():
     and market prices.
     """
     # First trade (first long)
+    type = "STOCK_TRANSACTION"
     asset = 'EQ:SPY'
     quantity = 453
     dt = pd.Timestamp('2020-06-16 15:00:00', tz=pytz.UTC)
@@ -563,10 +609,13 @@ def test_position_long_short_long_short_ending_long():
 
     # Create the initial transaction and position
     first_transaction = Transaction_MC(
+        type,
         asset,
         quantity=quantity,
         dt=dt,
         price=price,
+        currency = 'EUR',
+        fx_rate = 1.0,
         order_id=order_id,
         commission=commission
     )
@@ -579,10 +628,13 @@ def test_position_long_short_long_short_ending_long():
     order_id = 101
     commission = 4.8
     transaction = Transaction_MC(
+        type,
         asset,
         quantity=quantity,
         dt=dt,
         price=price,
+        currency = 'EUR',
+        fx_rate = 1.0,
         order_id=order_id,
         commission=commission
     )
@@ -595,10 +647,13 @@ def test_position_long_short_long_short_ending_long():
     order_id = 102
     commission = 2.68
     transaction = Transaction_MC(
+        type,
         asset,
         quantity=quantity,
         dt=dt,
         price=price,
+        currency = 'EUR',
+        fx_rate = 1.0,
         order_id=order_id,
         commission=commission
     )
@@ -611,10 +666,13 @@ def test_position_long_short_long_short_ending_long():
     order_id = 103
     commission = 6.28
     transaction = Transaction_MC(
+        type,
         asset,
         quantity=quantity,
         dt=dt,
         price=price,
+        currency = 'EUR',
+        fx_rate = 1.0,
         order_id=order_id,
         commission=commission
     )
@@ -647,6 +705,7 @@ def test_position_long_short_long_short_ending_long():
 def test_position_long_short_long_short_close_with_fx():
 
     # First trade (first long)
+    type = "STOCK_TRANSACTION"
     asset = 'EQ:SPY'
     quantity = 353
     dt = pd.Timestamp('2020-06-16 14:00:00', tz=pytz.UTC)
@@ -657,11 +716,13 @@ def test_position_long_short_long_short_close_with_fx():
 
     # Create the initial transaction and position
     first_transaction = Transaction_MC(
+        type,
         asset,
         quantity=quantity,
         dt=dt,
         price=price,
         order_id=order_id,
+        currency = 'EUR',
         fx_rate = fx_rate,
         commission=commission
     )
@@ -731,11 +792,13 @@ def test_position_long_short_long_short_close_with_fx():
     fx_rate = 0.75
     commission = 4.8
     transaction = Transaction_MC(
+        type,
         asset,
         quantity=quantity,
         dt=dt,
         price=price,
         order_id=order_id,
+        currency = 'EUR',
         fx_rate=fx_rate,
         commission=commission
     )
@@ -801,11 +864,13 @@ def test_position_long_short_long_short_close_with_fx():
     fx_rate = 0.55
     commission = 2.68
     transaction = Transaction_MC(
+        type,
         asset,
         quantity=quantity,
         dt=dt,
         price=price,
         order_id=order_id,
+        currency = 'EUR',
         fx_rate =fx_rate,
         commission=commission
     )
@@ -872,11 +937,13 @@ def test_position_long_short_long_short_close_with_fx():
     fx_rate = 0.57
     commission = 2.20
     transaction = Transaction_MC(
+        type,
         asset,
         quantity=quantity,
         dt=dt,
         price=price,
         order_id=order_id,
+        currency = 'EUR',
         fx_rate =fx_rate,
         commission=commission
     )
@@ -944,11 +1011,13 @@ def test_position_long_short_long_short_close_with_fx():
     fx_rate = 0.7
     commission = 1.79
     transaction = Transaction_MC(
+        type,
         asset,
         quantity=quantity,
         dt=dt,
         price=price,
         order_id=order_id,
+        currency = 'EUR',
         fx_rate =fx_rate,
         commission=commission
     )
@@ -981,6 +1050,7 @@ def test_position_long_short_long_short_close_with_fx():
 def test_position_long_long_close_with_fx():
 
     # First trade (first long)
+    type = "STOCK_TRANSACTION"
     asset = 'EQ:SPY'
     quantity = 353
     dt = pd.Timestamp('2020-06-16 14:00:00', tz=pytz.UTC)
@@ -991,11 +1061,13 @@ def test_position_long_long_close_with_fx():
 
     # Create the initial transaction and position
     first_transaction = Transaction_MC(
+        type,
         asset,
         quantity=quantity,
         dt=dt,
         price=price,
         order_id=order_id,
+        currency = 'EUR',
         fx_rate = fx_rate,
         commission=commission
     )
@@ -1120,10 +1192,12 @@ def test_position_long_long_close_with_fx():
     fx_rate = 0.55
     commission = 2.68
     transaction = Transaction_MC(
+        type,
         asset,
         quantity=quantity,
         dt=dt,
         price=price,
+        currency = 'EUR',
         order_id=order_id,
         fx_rate =fx_rate,
         commission=commission
@@ -1191,12 +1265,14 @@ def test_position_long_long_close_with_fx():
     fx_rate = 0.57
     commission = 2.20
     transaction = Transaction_MC(
+        type,
         asset,
         quantity=quantity,
         dt=dt,
         price=price,
-        order_id=order_id,
+        currency = 'EUR',
         fx_rate =fx_rate,
+        order_id=order_id,
         commission=commission
     )
     position.transact(transaction)
@@ -1229,7 +1305,7 @@ def test_position_long_long_close_with_fx():
 def test_position_short_short_close_with_fx():
 
     # First trade (first short)
-
+    type = "STOCK_TRANSACTION"
     asset = 'EQ:SPY'
     quantity = -397
     dt = pd.Timestamp('2020-06-16 16:00:00', tz=pytz.UTC)
@@ -1238,11 +1314,13 @@ def test_position_short_short_close_with_fx():
     fx_rate = 0.75
     commission = 4.8
     first_transaction = Transaction_MC(
+        type,
         asset,
         quantity=quantity,
         dt=dt,
         price=price,
         order_id=order_id,
+        currency = 'EUR',
         fx_rate=fx_rate,
         commission=commission
     )
@@ -1369,11 +1447,13 @@ def test_position_short_short_close_with_fx():
     fx_rate = 0.57
     commission = 2.20
     transaction = Transaction_MC(
+        type,
         asset,
         quantity=quantity,
         dt=dt,
         price=price,
         order_id=order_id,
+        currency = 'EUR',
         fx_rate =fx_rate,
         commission=commission
     )
@@ -1441,11 +1521,13 @@ def test_position_short_short_close_with_fx():
     fx_rate = 0.7
     commission = 1.79
     transaction = Transaction_MC(
+        type,
         asset,
         quantity=quantity,
         dt=dt,
         price=price,
         order_id=order_id,
+        currency = 'EUR',
         fx_rate =fx_rate,
         commission=commission
     )
@@ -1482,6 +1564,7 @@ def test_basic_short_equities_position():
     are calculated for a simple short equities position.
     """
     # Initial short details
+    type = "STOCK_TRANSACTION"
     asset = 'EQ:TLT'
     quantity = -100
     dt = pd.Timestamp('2020-06-16 15:00:00', tz=pytz.UTC)
@@ -1491,10 +1574,13 @@ def test_basic_short_equities_position():
 
     # Create the initial transaction and position
     transaction = Transaction_MC(
+        type,
         asset,
         quantity=quantity,
         dt=dt,
         price=price,
+        currency = 'EUR',
+        fx_rate=1.0,
         order_id=order_id,
         commission=commission
     )
@@ -1540,6 +1626,7 @@ def test_basic_short_equities_position_with_fx():
     are calculated for a simple short equities position.
     """
     # Initial short details
+    type = "STOCK_TRANSACTION"
     asset = 'EQ:TLT'
     quantity = -100
     dt = pd.Timestamp('2020-06-16 15:00:00', tz=pytz.UTC)
@@ -1550,11 +1637,13 @@ def test_basic_short_equities_position_with_fx():
 
     # Create the initial transaction and position
     transaction = Transaction_MC(
+        type,
         asset,
         quantity=quantity,
         dt=dt,
         price=price,
         order_id=order_id,
+        currency = 'EUR',
         fx_rate=fx_rate,
         commission=commission
     )
@@ -1601,6 +1690,7 @@ def test_position_short_twice():
     with differing quantities and market prices.
     """
     # Initial short details
+    type = "STOCK_TRANSACTION"
     asset = 'EQ:MSFT'
     quantity = -100
     dt = pd.Timestamp('2020-06-16 15:00:00', tz=pytz.UTC)
@@ -1610,10 +1700,13 @@ def test_position_short_twice():
 
     # Create the initial transaction and position
     first_transaction = Transaction_MC(
+        type,
         asset,
         quantity=quantity,
         dt=dt,
         price=price,
+        currency = 'USD',
+        fx_rate = 1.0,
         order_id=order_id,
         commission=commission
     )
@@ -1630,10 +1723,13 @@ def test_position_short_twice():
     second_order_id = 234
     second_commission = 1.27
     second_transaction = Transaction_MC(
+        type,
         asset,
         quantity=second_quantity,
         dt=second_dt,
         price=second_price,
+        currency = 'USD',
+        fx_rate = 1.0,
         order_id=second_order_id,
         commission=second_commission
     )
@@ -1667,6 +1763,7 @@ def test_position_short_close():
     subsequent closing trade.
     """
     # Initial short details
+    type = "STOCK_TRANSACTION"
     asset = 'EQ:TSLA'
     quantity = -100
     dt = pd.Timestamp('2020-06-16 15:00:00', tz=pytz.UTC)
@@ -1676,10 +1773,13 @@ def test_position_short_close():
 
     # Create the initial transaction and position
     first_transaction = Transaction_MC(
+        type,
         asset,
         quantity=quantity,
         dt=dt,
         price=price,
+        currency = 'USD',
+        fx_rate = 1.0,
         order_id=order_id,
         commission=commission
     )
@@ -1696,10 +1796,13 @@ def test_position_short_close():
     second_order_id = 234
     second_commission = 1.0
     second_transaction = Transaction_MC(
+        type,
         asset,
         quantity=second_quantity,
         dt=second_dt,
         price=second_price,
+        currency = 'USD',
+        fx_rate = 1.0,
         order_id=second_order_id,
         commission=second_commission
     )
@@ -1734,6 +1837,7 @@ def test_position_short_and_long():
     market prices.
     """
     # Initial short details
+    type = "STOCK_TRANSACTION"
     asset = 'EQ:TLT'
     quantity = -100
     dt = pd.Timestamp('2020-06-16 15:00:00', tz=pytz.UTC)
@@ -1743,10 +1847,13 @@ def test_position_short_and_long():
 
     # Create the initial transaction and position
     transaction = Transaction_MC(
+        type,
         asset,
         quantity=quantity,
         dt=dt,
         price=price,
+        currency = 'USD',
+        fx_rate = 1.0,
         order_id=order_id,
         commission=commission
     )
@@ -1763,10 +1870,13 @@ def test_position_short_and_long():
     second_order_id = 234
     second_commission = 1.0
     second_transaction = Transaction_MC(
+        type,
         asset,
         quantity=second_quantity,
         dt=second_dt,
         price=second_price,
+        currency = 'USD',
+        fx_rate = 1.0,
         order_id=second_order_id,
         commission=second_commission
     )
@@ -1802,6 +1912,7 @@ def test_position_short_long_short_long_ending_short():
     and market prices.
     """
     # First trade (first short)
+    type = "STOCK_TRANSACTION"
     asset = 'EQ:AGG'
     quantity = -762
     dt = pd.Timestamp('2020-06-16 15:00:00', tz=pytz.UTC)
@@ -1809,10 +1920,13 @@ def test_position_short_long_short_long_ending_short():
     order_id = 100
     commission = 5.35
     transaction = Transaction_MC(
+        type,
         asset,
         quantity=quantity,
         dt=dt,
         price=price,
+        currency = 'USD',
+        fx_rate = 1.0,
         order_id=order_id,
         commission=commission
     )
@@ -1825,10 +1939,13 @@ def test_position_short_long_short_long_ending_short():
     order_id = 101
     commission = 2.31
     transaction = Transaction_MC(
+        type,
         asset,
         quantity=quantity,
         dt=dt,
         price=price,
+        currency = 'USD',
+        fx_rate = 1.0,
         order_id=order_id,
         commission=commission
     )
@@ -1841,10 +1958,13 @@ def test_position_short_long_short_long_ending_short():
     order_id = 102
     commission = 4.18
     transaction = Transaction_MC(
+        type,
         asset,
         quantity=quantity,
         dt=dt,
         price=price,
+        currency = 'USD',
+        fx_rate = 1.0,
         order_id=order_id,
         commission=commission
     )
@@ -1857,10 +1977,13 @@ def test_position_short_long_short_long_ending_short():
     order_id = 103
     commission = 2.06
     transaction = Transaction_MC(
+        type,
         asset,
         quantity=quantity,
         dt=dt,
         price=price,
+        currency = 'USD',
+        fx_rate = 1.0,
         order_id=order_id,
         commission=commission
     )
@@ -1894,11 +2017,13 @@ def test_transact_for_incorrect_asset():
     with a Transaction with an Asset that does not
     match the position's asset, raises an Exception.
     """
+    type = "STOCK_TRANSACTION"
     asset1 = 'EQ:AAPL'
     asset2 = 'EQ:AMZN'
 
     position = Position_MC(
         asset1,
+        currency='USD',
         current_price=950.0,
         current_fx=1.0,
         current_dt=pd.Timestamp('2020-06-16 15:00:00', tz=pytz.UTC),
@@ -1912,10 +2037,13 @@ def test_transact_for_incorrect_asset():
 
     new_dt = pd.Timestamp('2020-06-16 16:00:00')
     transaction = Transaction_MC(
+        type,
         asset2,
         quantity=50,
         dt=new_dt,
         price=960.0,
+        currency ='USD',
+        fx_rate = 1.0,
         order_id=123,
         commission=1.0
     )

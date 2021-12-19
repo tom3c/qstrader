@@ -8,6 +8,7 @@ class Position_MC(object):
     def __init__(
         self,
         asset,
+        currency,
         current_price,
         current_fx,
         current_dt,
@@ -19,8 +20,9 @@ class Position_MC(object):
         sell_commission
     ):
         self.asset = asset
+        self.currency = currency
         self.current_price = current_price
-        self.current_fx = current_fx    ## TC
+        self.current_fx = current_fx
         self.current_dt = current_dt
         self.buy_quantity = buy_quantity
         self.sell_quantity = sell_quantity
@@ -33,6 +35,7 @@ class Position_MC(object):
     def open_from_transaction(cls, transaction):
 
         asset = transaction.asset
+        currency = transaction.currency
         current_price = transaction.price
         current_fx =  transaction.fx_rate
         current_dt = transaction.dt
@@ -54,6 +57,7 @@ class Position_MC(object):
 
         return cls(
             asset,
+            currency,
             current_price,
             current_fx,
             current_dt,
@@ -89,6 +93,17 @@ class Position_MC(object):
     @property
     def market_value_local(self):
         return self.current_price * self.net_quantity
+
+
+    #Added get exposure for derivs  
+    @property
+    def exposure_base(self):
+        return self.current_price * self.net_quantity * self.current_fx
+
+    @property
+    def exposure_local(self):
+        return self.current_price * self.net_quantity  
+
 
     ##Includes comms - currently in local currency
     @property
@@ -155,14 +170,10 @@ class Position_MC(object):
 
     @property
     def total_pnl_local(self):
-        return self.realised_pnl + self.unrealised_pnl
+        return self.realised_pnl_local + self.unrealised_pnl_local
 
 
     ##BASE P&L###
-    
-    #@property
-    #def realised_pnl_base(self): ##This doesn't make sense
-
     @property
     def unrealised_pnl_base(self):
         return (self.current_price - self.avg_price) * self.net_quantity * self.current_fx
